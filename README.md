@@ -21,24 +21,42 @@ motogest/
 ### Pré-requisitos
 - Node.js 18+
 - npm
+- Git
 
-### Backend
+---
+
+### 1. Clonar o repositório
+
+```bash
+git clone https://github.com/seu-usuario/motogest.git
+cd motogest
+```
+
+---
+
+### 2. Configurar o Backend
+
+Entre na pasta do backend e instale todas as dependências:
 
 ```bash
 cd backend
 npm install
 ```
 
-Crie um arquivo `.env` na pasta `backend/` com as variáveis:
+Isso vai instalar automaticamente: `express`, `cors`, `pg`, `dotenv` e tudo mais que estiver no `package.json`.
+
+Agora crie o arquivo `.env` dentro da pasta `backend/` — **nunca suba esse arquivo pro GitHub:**
 
 ```env
-DB_HOST=seu_host
+DB_HOST=aws-1-sa-east-1.pooler.supabase.com
 DB_PORT=5432
-DB_USER=seu_user
-DB_PASSWORD=sua_senha
+DB_USER=postgres.ipbpqxsgjegsyqhkzcpi
+DB_PASSWORD=senha_que_o_pablo_vai_passar
 DB_NAME=postgres
 PORT=3001
 ```
+
+> ⚠️ Pede a senha do banco pro Pablo — ela não fica no repositório por segurança.
 
 Rode o servidor:
 
@@ -46,15 +64,33 @@ Rode o servidor:
 npm run dev
 ```
 
-A API estará disponível em `http://localhost:3001`
+Se aparecer `Servidor rodando na porta 3001` funcionou. ✅
 
-### Frontend
+---
+
+### 3. Configurar o Frontend
+
+Abre um **novo terminal** (deixa o backend rodando) e entre na pasta do frontend:
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+O React vai abrir em `http://localhost:5173`
+
+---
+
+### 4. Testar se está tudo funcionando
+
+Com o backend rodando, acessa no navegador ou Insomnia/Postman:
+
+```
+GET http://localhost:3001/api/produtos/44e043fa-5652-42bf-a252-c07f48025bab
+```
+
+Se retornar uma lista de produtos, está tudo certo. ✅
 
 ---
 
