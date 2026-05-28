@@ -1,13 +1,13 @@
-import pool from '../models/db.js';
+import pool from '../config/db.js';
 
 export const getProdutos = async (req, res) => {
     const { idOrganizacao } = req.params;
 
     try {
         const result = await pool.query(
-            'SELECT * FROM produto WHERE "idOrganizacao" = $1 ORDER BY "nomeProduto" ASC',
-            [idOrganizacao]
-        );
+            'SELECT * FROM produto WHERE idorganizacao = $1 ORDER BY nomeproduto ASC',
+                [idOrganizacao]
+            );
 
         return res.status(200).json(result.rows);
 

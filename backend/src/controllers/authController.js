@@ -1,4 +1,4 @@
-import pool from '../models/db.js';
+import pool from '../config/db.js';
 
 export const cadastro = async (req, res) => {
     const { nomeUsuario, emailUsuario, senhaUsuario, idOrganizacao } = req.body;
