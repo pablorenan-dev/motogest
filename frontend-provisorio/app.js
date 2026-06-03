@@ -135,11 +135,11 @@ async function adicionarPeca() {
     
     // Ajuste para lidar com a estrutura do seu login
     const dados = JSON.parse(usuarioSalvo);
-    const idOrganizacao = usuario.usuario.idOrganizacao;
+    const idOrganizacao = dados.usuario.idOrganizacao;
 
     // 4. "Telefona" para o Back-end mandando salvar
     try {
-        const resposta = await fetch(`${API_URL}/`, { // Atenção: Confirme se a rota de criar produto é só a barra ou /produto
+        const resposta = await fetch(`${API_URL}/produtos`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

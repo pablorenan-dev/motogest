@@ -17,14 +17,14 @@ export const getProdutos = async (req, res) => {
     }
 };
 
-export const postProduto = async (req, res) => {
+export const criarProduto = async (req, res) => {
     const {idOrganizacao, idUsuario, nomeProduto, idProduto
         , descricaoProduto, precoProduto, quantidadeProduto, quantidadeMinimaProduto, criticoProduto, } = req.body;
 
     try{
         const result = await pool.query(
             'INSERT INTO produto (nomeproduto, descricaoproduto, precoproduto, quantidadeproduto, quantidademinimaproduto, idorganizacao) VALUES ($1, $2, $3, $4, $5, $6)',
-            [nomeProduto, descricaoProduto, precoProduto, quantidadeProduto, quantidadeMinimaProduto, idOrganizacao]
+            [nomeProduto, descricaoProduto, precoProduto, quantidadeProduto ?? 0, quantidadeMinimaProduto ?? 0, idOrganizacao]
 
         );
 
@@ -33,7 +33,7 @@ export const postProduto = async (req, res) => {
         });
 
     }catch(e){
-        console.error(error);
+        console.error(e);
         return res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 }

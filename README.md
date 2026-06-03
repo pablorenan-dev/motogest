@@ -215,26 +215,6 @@ GET http://localhost:3001/api/produtos/44e043fa-5652-42bf-a252-c07f48025bab
     "quantidademinimaproduto": 2,
     "criticoproduto": true,
     "idorganizacao": "44e043fa-5652-42bf-a252-c07f48025bab"
-  },
-  {
-    "idproduto": "uuid-do-produto-2",
-    "nomeproduto": "Filtro de Óleo",
-    "descricaoproduto": "Filtro para Honda CG 160",
-    "precoproduto": "25.90",
-    "quantidadeproduto": 3,
-    "quantidademinimaproduto": 5,
-    "criticoproduto": true,
-    "idorganizacao": "44e043fa-5652-42bf-a252-c07f48025bab"
-  },
-  {
-    "idproduto": "uuid-do-produto-3",
-    "nomeproduto": "Vela de Ignição",
-    "descricaoproduto": "NGK compatível com várias motos",
-    "precoproduto": "18.00",
-    "quantidadeproduto": 10,
-    "quantidademinimaproduto": 3,
-    "criticoproduto": false,
-    "idorganizacao": "44e043fa-5652-42bf-a252-c07f48025bab"
   }
 ]
 ```
@@ -244,6 +224,103 @@ GET http://localhost:3001/api/produtos/44e043fa-5652-42bf-a252-c07f48025bab
 | Status | Motivo |
 |--------|--------|
 | `200` | Lista retornada com sucesso |
+| `500` | Erro interno |
+
+---
+
+#### `POST /produtos`
+
+Cria um novo produto vinculado a uma organização.
+
+**Body:**
+```json
+{
+  "nomeProduto": "Corrente de Transmissão",
+  "descricaoProduto": "Corrente 428 para motos 150cc",
+  "precoProduto": 89.90,
+  "quantidadeProduto": 5,
+  "quantidadeMinimaProduto": 2,
+  "idOrganizacao": "44e043fa-5652-42bf-a252-c07f48025bab"
+}
+```
+
+**Resposta `201`:**
+```json
+{
+  "message": "Produto cadastrado com sucesso."
+}
+```
+
+| Status | Motivo |
+|--------|--------|
+| `201` | Produto criado com sucesso |
+| `500` | Erro interno |
+
+---
+
+#### `PUT /produtos/:idproduto`
+
+Atualiza os dados de um produto existente.
+
+**Exemplo de chamada:**
+```
+PUT http://localhost:3001/api/produtos/uuid-do-produto
+```
+
+**Body:**
+```json
+{
+  "nomeProduto": "Corrente de Transmissão",
+  "descricaoProduto": "Corrente 428 para motos 150cc atualizada",
+  "precoProduto": 95.00,
+  "quantidadeProduto": 8,
+  "quantidadeMinimaProduto": 2
+}
+```
+
+**Resposta `200`:**
+```json
+{
+  "message": "Produto atualizado com sucesso.",
+  "produto": {
+    "idproduto": "uuid-do-produto",
+    "nomeproduto": "Corrente de Transmissão",
+    "descricaoproduto": "Corrente 428 para motos 150cc atualizada",
+    "precoproduto": "95.00",
+    "quantidadeproduto": 8,
+    "quantidademinimaproduto": 2
+  }
+}
+```
+
+| Status | Motivo |
+|--------|--------|
+| `200` | Produto atualizado com sucesso |
+| `404` | Produto não encontrado |
+| `500` | Erro interno |
+
+---
+
+#### `DELETE /produtos/:idproduto`
+
+Remove um produto do estoque.
+
+**Exemplo de chamada:**
+```
+DELETE http://localhost:3001/api/produtos/uuid-do-produto
+```
+
+**Resposta `200`:**
+```json
+{
+  "message": "Produto deletado com sucesso."
+}
+```
+
+| Status | Motivo |
+|--------|--------|
+| `200` | Produto deletado com sucesso |
+| `404` | Produto não encontrado |
 | `500` | Erro interno |
 
 ---
