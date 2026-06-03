@@ -88,14 +88,27 @@ function renderizarEstoque() {
     pecas.forEach(peca => {
         const li = document.createElement('li');
         li.className = 'item-card';
-        // Usando os nomes que você planejou: nomeProduto, descricaoProduto, precoProduto
-        li.innerHTML = `
-            <span>${peca.nomeproduto} | Descrição: ${peca.descricaoproduto} | Preço: R$ ${peca.precoproduto}</span>
-            <div class="item-actions">
-                <button class="btn-delete" onclick="abrirModalDeletar(${peca.idproduto})">🗑️</button>
-                <button class="btn-edit" onclick="abrirModalEditar(${peca.idproduto})">✏️</button>
-            </div>
-        `;
+
+        const span = document.createElement('span');
+        span.textContent = `${peca.nomeproduto} | Descrição: ${peca.descricaoproduto} | Preço: R$ ${peca.precoproduto}`;
+
+        const actions = document.createElement('div');
+        actions.className = 'item-actions';
+
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'btn-delete';
+        btnDelete.textContent = '🗑️';
+        btnDelete.addEventListener('click', () => abrirModalDeletar(peca.idproduto));
+
+        const btnEdit = document.createElement('button');
+        btnEdit.className = 'btn-edit';
+        btnEdit.textContent = '✏️';
+        btnEdit.addEventListener('click', () => abrirModalEditar(peca.idproduto));
+
+        actions.appendChild(btnDelete);
+        actions.appendChild(btnEdit);
+        li.appendChild(span);
+        li.appendChild(actions);
         lista.appendChild(li);
     });
 }
@@ -154,7 +167,86 @@ async function adicionarPeca() {
     }
 }
 
-// ... [O RESTO DAS FUNÇÕES DE MODAL CONTINUAM IGUAIS AO CÓDIGO ANTERIOR] ...
+// ================= FUNÇÕES DE EDITAR PEÇA =================
+
+function abrirModalEditar(id) {
+    pecaAtualId = id;
+    const peca = pecas.find(p => p.idproduto === id);
+    if (!peca) return;
+
+    document.getElementById('edit-nome').value = peca.nomeproduto || '';
+    document.getElementById('edit-desc').value = peca.descricaoproduto || '';
+    document.getElementById('edit-preco').value = peca.precoproduto || '';
+    document.getElementById('edit-quantidade').value = peca.quantidadeproduto || '';
+    document.getElementById('edit-qtd-min').value = peca.quantidademinimaproduto || '';
+
+    abrirModal('modal-edit');
+}
+
+async function salvarEdicao() {
+    const nome = document.getElementById('edit-nome').value;
+    const desc = document.getElementById('edit-desc').value;
+    const preco = document.getElementById('edit-preco').value;
+    const quantidade = document.getElementById('edit-quantidade').value;
+    const qtdMin = document.getElementById('edit-qtd-min').value;
+
+    if (!nome || !desc || !preco) {
+        alert("Por favor, preencha os campos obrigatórios.");
+        return;
+    }
+
+    try {
+        const resposta = await fetch(`${API_URL}/produtos/${pecaAtualId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nomeProduto: nome,
+                descricaoProduto: desc,
+                precoProduto: parseFloat(preco),
+                quantidadeProduto: parseInt(quantidade) || 0,
+                quantidadeMinimaProduto: parseInt(qtdMin) || 0
+            })
+        });
+
+        if (resposta.ok) {
+            fecharModal('modal-edit');
+            carregarEstoqueBanco();
+        } else {
+            alert("Erro ao atualizar a peça.");
+        }
+    } catch (erro) {
+        console.error("Erro ao editar:", erro);
+        alert("Erro de conexão. O Back-end está rodando?");
+    }
+}
+
+// ================= FUNÇÕES DE DELETAR PEÇA =================
+
+function abrirModalDeletar(id) {
+    pecaAtualId = id;
+    abrirModal('modal-delete');
+}
+
+async function deletarPeca() {
+    try {
+        const resposta = await fetch(`${API_URL}/produtos/${pecaAtualId}`, {
+            method: 'DELETE'
+        });
+
+        if (resposta.ok) {
+            fecharModal('modal-delete');
+            carregarEstoqueBanco();
+        } else {
+            alert("Erro ao deletar a peça.");
+        }
+    } catch (erro) {
+        console.error("Erro ao deletar:", erro);
+        alert("Erro de conexão. O Back-end está rodando?");
+    }
+}
+
+// ================= HELPERS DE MODAL =================
+
 function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
 function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
 function fecharModalFora(event, id) { if (event.target.id === id) fecharModal(id); }
