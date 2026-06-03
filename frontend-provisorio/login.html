@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <section class="login-page">
+        <div class="login-container">
+            <h2>Motogest</h2>
+            <form onsubmit="validarLogin(event)">
+                <input type="email" placeholder="e-mail" id="login-email">
+                <input type="password" placeholder="senha" id="login-senha">
+                <div id="error-msg" class="error-msg"></div>
+                <button type="submit">Logar</button>
+            </form>
+        </div>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>
