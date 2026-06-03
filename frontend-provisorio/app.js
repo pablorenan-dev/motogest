@@ -1,5 +1,5 @@
 // URL base do seu Back-end
-const API_URL = 'http://localhost:3001';
+const API_URL = 'http://localhost:3001/api';
 
 // ================= LÓGICA DE LOGIN =================
 async function validarLogin(event) {
@@ -22,7 +22,7 @@ async function validarLogin(event) {
 
     try {
         // "Telefonando" para o Back-end
-        const resposta = await fetch(`${API_URL}/login`, {
+        const resposta = await fetch(`${API_URL}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -62,11 +62,12 @@ async function carregarEstoqueBanco() {
     if (!usuarioSalvo) return; // Se não tem ninguém logado, não faz nada
 
     const usuario = JSON.parse(usuarioSalvo);
-    const idOrganizacao = usuario.idOrganizacao;
+    const idOrganizacao = usuario.usuario.idOrganizacao;
 
     try {
+        console.log("chegou!")
         // Rota GET /:idOrganizacao que vimos no seu produtoRoutes.js
-        const resposta = await fetch(`${API_URL}/${idOrganizacao}`);
+        const resposta = await fetch(`${API_URL}/produtos/${idOrganizacao}`);
         
         if (resposta.ok) {
             pecas = await resposta.json(); // Salva os dados que vieram do banco
@@ -83,16 +84,16 @@ function renderizarEstoque() {
     if (!lista) return; 
 
     lista.innerHTML = ""; 
-
+    
     pecas.forEach(peca => {
         const li = document.createElement('li');
         li.className = 'item-card';
         // Usando os nomes que você planejou: nomeProduto, descricaoProduto, precoProduto
         li.innerHTML = `
-            <span>${peca.nomeProduto} | Descrição: ${peca.descricaoProduto} | Preço: R$ ${peca.precoProduto}</span>
+            <span>${peca.nomeproduto} | Descrição: ${peca.descricaoproduto} | Preço: R$ ${peca.precoproduto}</span>
             <div class="item-actions">
-                <button class="btn-delete" onclick="abrirModalDeletar(${peca.idProduto})">🗑️</button>
-                <button class="btn-edit" onclick="abrirModalEditar(${peca.idProduto})">✏️</button>
+                <button class="btn-delete" onclick="abrirModalDeletar(${peca.idproduto})">🗑️</button>
+                <button class="btn-edit" onclick="abrirModalEditar(${peca.idproduto})">✏️</button>
             </div>
         `;
         lista.appendChild(li);
@@ -121,7 +122,7 @@ async function adicionarPeca() {
     
     // Ajuste para lidar com a estrutura do seu login
     const dados = JSON.parse(usuarioSalvo);
-    const idOrganizacao = dados.usuario ? dados.usuario.idOrganizacao : dados.idOrganizacao;
+    const idOrganizacao = usuario.usuario.idOrganizacao;
 
     // 4. "Telefona" para o Back-end mandando salvar
     try {

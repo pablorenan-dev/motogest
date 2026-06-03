@@ -44,7 +44,7 @@ export const login = async (req, res) => {
 
     try {
         const result = await pool.query(
-            'SELECT * FROM usuario WHERE "emailUsuario" = $1 AND "senhaUsuario" = $2',
+            'SELECT * FROM usuario WHERE emailusuario = $1 AND senhausuario = $2',
             [emailUsuario, senhaUsuario]
         );
 
@@ -57,10 +57,10 @@ export const login = async (req, res) => {
         return res.status(200).json({
             message: 'Login realizado com sucesso.',
             usuario: {
-                idUsuario: usuario.idUsuario,
-                nomeUsuario: usuario.nomeUsuario,
-                emailUsuario: usuario.emailUsuario,
-                idOrganizacao: usuario.idOrganizacao
+                idUsuario: usuario.idusuario,
+                nomeUsuario: usuario.nomeusuario,
+                emailUsuario: usuario.emailusuario,
+                idOrganizacao: usuario.idorganizacao
             }
         });
 
