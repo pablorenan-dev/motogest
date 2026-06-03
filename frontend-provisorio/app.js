@@ -87,7 +87,9 @@ function renderizarEstoque() {
     
     pecas.forEach(peca => {
         const li = document.createElement('li');
-        li.className = 'item-card';
+        const eCritica = peca.quantidadeproduto !== null && peca.quantidademinimaproduto !== null
+            && peca.quantidadeproduto <= peca.quantidademinimaproduto;
+        li.className = eCritica ? 'item-card item-card-critica' : 'item-card';
 
         const span = document.createElement('span');
         span.textContent = `${peca.nomeproduto} | Descrição: ${peca.descricaoproduto} | Preço: R$ ${peca.precoproduto}`;

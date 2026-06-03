@@ -145,6 +145,8 @@ body {
 .btn-edit { background-color: #ffd3b6; }
 .btn-delete { background-color: #ffaaa5; }
 
+.item-card-critica { background-color: #ffcccc; border-color: #cc0000; }
+
 /* ================= Modais ================= */
 .modal-overlay {
     display: none;
