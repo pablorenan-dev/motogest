@@ -50,6 +50,8 @@ DB_USER=postgres.ipbpqxsgjegsyqhkzcpi
 DB_PASSWORD=senha_que_o_pablo_vai_passar
 DB_NAME=postgres
 PORT=3001
+JWT_SECRET=coloca_uma_string_longa_e_aleatoria_aqui
+JWT_EXPIRES_IN=8h
 ```
 
 ```bash
@@ -63,6 +65,54 @@ Se aparecer `Servidor rodando na porta 3001` funcionou. ✅
 ### 3. Abrir o Frontend
 
 Abra o arquivo `frontend-provisorio/login.html` diretamente no navegador. Não precisa de `npm install` nem servidor separado — é HTML puro.
+
+---
+
+## 🔑 Autenticação JWT — leia antes de fazer qualquer tela
+
+O sistema usa **JWT (JSON Web Token)**. Toda rota da API exceto `/api/auth/login` exige um token válido no header. Se você esquecer isso, vai tomar `401` em tudo e não vai entender por quê.
+
+### Como funciona
+
+1. O usuário faz login → backend devolve um `token`
+2. O frontend salva esse token no `localStorage`
+3. **Todo request seguinte** precisa mandar esse token no header `Authorization`
+4. Se o token expirar (8h), o backend devolve `401` e o usuário precisa logar de novo
+
+### Regra de ouro: nunca use `fetch` direto — use `fetchAutenticado`
+
+A função `fetchAutenticado` já está no `app.js`. Ela injeta o token automaticamente e redireciona pro login se receber 401.
+
+**Errado:**
+```js
+const resposta = await fetch(`${API_URL}/produtos/${idOrganizacao}`);
+```
+
+**Certo:**
+```js
+const resposta = await fetchAutenticado(`${API_URL}/produtos/${idOrganizacao}`);
+```
+
+A única exceção é o próprio login — ele usa `fetch` normal porque ainda não tem token.
+
+### Como pegar o idOrganizacao nas telas
+
+```js
+const { usuario } = JSON.parse(localStorage.getItem('usuarioLogado'));
+const idOrganizacao = usuario.idOrganizacao;
+```
+
+### Fazer logout
+
+```js
+localStorage.removeItem('token');
+localStorage.removeItem('usuarioLogado');
+window.location.href = 'login.html';
+```
+
+### Não precisa mexer no banco
+
+JWT é stateless — o token é verificado pelo backend direto na memória. Nenhuma tabela nova, nenhuma coluna extra no banco.
 
 ---
 

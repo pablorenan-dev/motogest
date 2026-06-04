@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import jwt from 'jsonwebtoken';
 
 export const cadastro = async (req, res) => {
     const { nomeUsuario, emailUsuario, senhaUsuario, idOrganizacao } = req.body;
@@ -54,14 +55,21 @@ export const login = async (req, res) => {
 
         const usuario = result.rows[0];
 
+        const payload = {
+            idUsuario: usuario.idusuario,
+            nomeUsuario: usuario.nomeusuario,
+            emailUsuario: usuario.emailusuario,
+            idOrganizacao: usuario.idorganizacao
+        };
+
+        const token = jwt.sign(payload, process.env.JWT_SECRET, {
+            expiresIn: process.env.JWT_EXPIRES_IN
+        });
+
         return res.status(200).json({
             message: 'Login realizado com sucesso.',
-            usuario: {
-                idUsuario: usuario.idusuario,
-                nomeUsuario: usuario.nomeusuario,
-                emailUsuario: usuario.emailusuario,
-                idOrganizacao: usuario.idorganizacao
-            }
+            token,
+            usuario: payload
         });
 
     } catch (error) {

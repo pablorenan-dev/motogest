@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import 'dotenv/config';
+import autenticar from './src/middlewares/autenticar.js';
 import authRoutes from './src/routes/authRoutes.js';
 import produtoRoutes from './src/routes/produtoRoutes.js';
 import usuarioRoutes from './src/routes/usuarioRoutes.js';
@@ -15,14 +17,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Rota pública — não exige token
 app.use('/api/auth', authRoutes);
-app.use('/api/produtos', produtoRoutes);
-app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/organizacoes', organizacaoRoutes);
-app.use('/api/motos', motoRoutes);
-app.use('/api/contatos', contatoRoutes);
-app.use('/api/servicos', servicoRoutes);
-app.use('/api/vendas', vendaRoutes);
-app.use('/api/compras', compraRoutes);
+
+// Todas as rotas abaixo exigem token válido
+app.use('/api/produtos', autenticar, produtoRoutes);
+app.use('/api/usuarios', autenticar, usuarioRoutes);
+app.use('/api/organizacoes', autenticar, organizacaoRoutes);
+app.use('/api/motos', autenticar, motoRoutes);
+app.use('/api/contatos', autenticar, contatoRoutes);
+app.use('/api/servicos', autenticar, servicoRoutes);
+app.use('/api/vendas', autenticar, vendaRoutes);
+app.use('/api/compras', autenticar, compraRoutes);
 
 export default app;

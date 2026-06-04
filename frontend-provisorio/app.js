@@ -1,6 +1,33 @@
 // URL base do seu Back-end
 const API_URL = 'http://localhost:3001/api';
 
+// Retorna o token salvo no localStorage
+function getToken() {
+    return localStorage.getItem('token');
+}
+
+// Wrapper autenticado — adiciona o token em todo request e redireciona se expirar
+async function fetchAutenticado(url, opcoes = {}) {
+    const token = getToken();
+
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(opcoes.headers || {})
+    };
+
+    const resposta = await fetch(url, { ...opcoes, headers });
+
+    if (resposta.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuarioLogado');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    return resposta;
+}
+
 // ================= LÓGICA DE LOGIN =================
 async function validarLogin(event) {
     event.preventDefault(); // Evita recarregar a página
@@ -21,28 +48,25 @@ async function validarLogin(event) {
     }
 
     try {
-        // "Telefonando" para o Back-end
-        const resposta = await fetch(`${API_URL}/api/auth/login`, {
+        const resposta = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                emailUsuario: email, 
-                senhaUsuario: senha 
-            }) // Nomes baseados no seu banco de dados
+            body: JSON.stringify({ emailUsuario: email, senhaUsuario: senha })
         });
 
         if (resposta.ok) {
-            const dadosUsuario = await resposta.json();
-            
-            // Salvamos os dados do usuário (como o idOrganizacao) no navegador
-            // para sabermos de qual organização puxar os produtos depois
-            localStorage.setItem('usuarioLogado', JSON.stringify(dadosUsuario));
-            
-            // Vai para a tela principal
+            const dados = await resposta.json();
+
+            localStorage.setItem('token', dados.token);
+            localStorage.setItem('usuarioLogado', JSON.stringify(dados));
+
             window.location.href = "home.html";
-        } else {
+        } else if (resposta.status === 401) {
             errorMsg.style.display = "block";
             errorMsg.innerText = "E-mail ou senha incorretos.";
+        } else {
+            errorMsg.style.display = "block";
+            errorMsg.innerText = "Erro ao conectar com o servidor.";
         }
     } catch (erro) {
         console.error("Erro de conexão:", erro);
@@ -65,13 +89,11 @@ async function carregarEstoqueBanco() {
     const idOrganizacao = usuario.usuario.idOrganizacao;
 
     try {
-        console.log("chegou!")
-        // Rota GET /:idOrganizacao que vimos no seu produtoRoutes.js
-        const resposta = await fetch(`${API_URL}/produtos/${idOrganizacao}`);
-        
-        if (resposta.ok) {
-            pecas = await resposta.json(); // Salva os dados que vieram do banco
-            renderizarEstoque(); // Desenha na tela
+        const resposta = await fetchAutenticado(`${API_URL}/produtos/${idOrganizacao}`);
+
+        if (resposta && resposta.ok) {
+            pecas = await resposta.json();
+            renderizarEstoque();
         }
     } catch (erro) {
         console.error("Erro ao buscar as peças:", erro);
@@ -141,9 +163,8 @@ async function adicionarPeca() {
 
     // 4. "Telefona" para o Back-end mandando salvar
     try {
-        const resposta = await fetch(`${API_URL}/produtos`, {
+        const resposta = await fetchAutenticado(`${API_URL}/produtos`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 nomeProduto: nome,
                 descricaoProduto: desc,
@@ -152,7 +173,7 @@ async function adicionarPeca() {
             })
         });
 
-        if (resposta.ok) {
+        if (resposta && resposta.ok) {
             // Se deu certo: fecha a janela, limpa os campos e recarrega a lista
             fecharModal('modal-add');
             document.getElementById('add-nome').value = '';
@@ -198,9 +219,8 @@ async function salvarEdicao() {
     }
 
     try {
-        const resposta = await fetch(`${API_URL}/produtos/${pecaAtualId}`, {
+        const resposta = await fetchAutenticado(`${API_URL}/produtos/${pecaAtualId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 nomeProduto: nome,
                 descricaoProduto: desc,
@@ -210,7 +230,7 @@ async function salvarEdicao() {
             })
         });
 
-        if (resposta.ok) {
+        if (resposta && resposta.ok) {
             fecharModal('modal-edit');
             carregarEstoqueBanco();
         } else {
@@ -231,11 +251,11 @@ function abrirModalDeletar(id) {
 
 async function deletarPeca() {
     try {
-        const resposta = await fetch(`${API_URL}/produtos/${pecaAtualId}`, {
+        const resposta = await fetchAutenticado(`${API_URL}/produtos/${pecaAtualId}`, {
             method: 'DELETE'
         });
 
-        if (resposta.ok) {
+        if (resposta && resposta.ok) {
             fecharModal('modal-delete');
             carregarEstoqueBanco();
         } else {
