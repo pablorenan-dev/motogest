@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Motos - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo-placeholder">M</div>
+        <a href="home.html" class="nav-item">- Home</a>
+        <a href="estoque.html" class="nav-item">- Estoque</a>
+        <a href="moto.html" class="nav-item">- Motos</a>
+        <a href="vendas.html" class="nav-item active">- Vendas</a>
+    </aside>
+
+    <main class="main-content">
+        <div class="estoque-header">
+            <h2>Vendas</h2>
+        </div>
+
+        <div class="venda-container">
+            <div id="lista-pecas-alt"></div>
+            <div class="cart">
+
+            <div class="cart-title">🛒 Carrinho</div>
+
+            <div id="cart-itens"></div>
+
+            <div class="total">
+                <div class="total-row">
+                    <span>Total: R$</span>
+                    <span id="total"></span>
+                </div>
+
+                <button class="checkout">Finalizar Venda</button>
+
+                <button class="clear" onclick="clearCart()">Limpar Carrinho</button>
+            </div>
+        </div>
+    </main>
+    <script src="app.js"></script>
+</body>
+</html>

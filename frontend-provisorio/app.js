@@ -79,6 +79,7 @@ async function validarLogin(event) {
 
 let pecas = [];
 let pecaAtualId = null;
+const cart = [];
 
 // Busca as peças REAIS do banco de dados
 async function carregarEstoqueBanco() {
@@ -102,39 +103,141 @@ async function carregarEstoqueBanco() {
 
 // Renderiza a lista na tela (agora usando os nomes do banco de dados)
 function renderizarEstoque() {
-    const lista = document.getElementById('lista-pecas');
-    if (!lista) return; 
+    if (document.getElementById('lista-pecas') != null) {
+        const lista = document.getElementById('lista-pecas');
+        lista.innerHTML = "";
 
-    lista.innerHTML = ""; 
-    
-    pecas.forEach(peca => {
-        const li = document.createElement('li');
-        const eCritica = peca.quantidadeproduto !== null && peca.quantidademinimaproduto !== null
-            && peca.quantidadeproduto <= peca.quantidademinimaproduto;
-        li.className = eCritica ? 'item-card item-card-critica' : 'item-card';
+        pecas.forEach(peca => {
+            const tr = document.createElement('tr');
+            const eCritica = peca.quantidadeproduto !== null && peca.quantidademinimaproduto !== null
+                && peca.quantidadeproduto <= peca.quantidademinimaproduto;
+            tr.className = eCritica ? 'item-card item-card-critica ' : 'item-card td';
 
-        const span = document.createElement('span');
-        span.textContent = `${peca.nomeproduto} | Descrição: ${peca.descricaoproduto} | Preço: R$ ${peca.precoproduto}`;
+            const tdProduto = document.createElement('td');
+            tdProduto.textContent = `${peca.nomeproduto}`;
+            const tdDescricao = document.createElement('td');
+            tdDescricao.textContent = `${peca.descricaoproduto}`;
+            const tdPreco = document.createElement('td');
+            tdPreco.textContent = `R$ ${peca.precoproduto}`;
 
-        const actions = document.createElement('div');
-        actions.className = 'item-actions';
+            //...
+            const tdActions = document.createElement('td');
+            tdActions.className = 'item-actions';
 
-        const btnDelete = document.createElement('button');
-        btnDelete.className = 'btn-delete';
-        btnDelete.textContent = '🗑️';
-        btnDelete.addEventListener('click', () => abrirModalDeletar(peca.idproduto));
+            const btnDelete = document.createElement('button');
+            btnDelete.className = 'btn-delete';
+            btnDelete.textContent = '🗑️';
+            btnDelete.addEventListener('click', () => abrirModalDeletar(peca.idproduto));
 
-        const btnEdit = document.createElement('button');
-        btnEdit.className = 'btn-edit';
-        btnEdit.textContent = '✏️';
-        btnEdit.addEventListener('click', () => abrirModalEditar(peca.idproduto));
+            const btnEdit = document.createElement('button');
+            btnEdit.className = 'btn-edit';
+            btnEdit.textContent = '✏️';
+            btnEdit.addEventListener('click', () => abrirModalEditar(peca.idproduto));
 
-        actions.appendChild(btnDelete);
-        actions.appendChild(btnEdit);
-        li.appendChild(span);
-        li.appendChild(actions);
-        lista.appendChild(li);
-    });
+            tdActions.appendChild(btnDelete);
+            tdActions.appendChild(btnEdit);
+            tr.appendChild(tdProduto);
+            tr.appendChild(tdDescricao);
+            tr.appendChild(tdPreco);
+            tr.appendChild(tdActions);
+            lista.appendChild(tr);
+        });
+    } else if (document.getElementById('lista-pecas-alt') != null) {
+        const lista = document.getElementById('lista-pecas-alt');
+        lista.innerHTML = "";
+
+        pecas.forEach(peca => {
+            const div = document.createElement('div');
+            div.className = 'product-card';
+
+            div.innerHTML = `<div class="product-info">
+                                <div class="product-name">${peca.nomeproduto}</div>
+                                <div class="price">R$ ${peca.precoproduto}</div>
+                            </div>
+                            <div class="stock">${peca.quantidadeproduto}</div>`;
+
+            div.addEventListener('click', () => {
+                addToCart(peca.idproduto);
+            });
+
+            lista.appendChild(div);
+        });
+        renderCart();
+    }
+}
+
+function addToCart(id) {
+    const produtos = pecas.find(p => p.idproduto === id);
+    const existe = cart.find(item => item.idproduto === id);
+
+    if (existe) {
+        if (existe.quantidade < produtos.quantidadeproduto) {
+            existe.quantidade++;
+        } else {
+            alert("Estoque insuficiente.");
+            return;
+        }
+    } else {
+        cart.push({
+            ...produtos,
+            quantidade: 1
+        });
+    }
+
+    renderCart();
+}
+
+function changeQty(id, delta) {
+    const item = cart.find(p => p.idproduto === id);
+
+    if (!item) return;
+
+    const produto = pecas.find(p => p.idproduto === id);
+    if (delta > 0 && item.quantidade >= produto.quantidadeproduto) {
+        alert("Estoque insuficiente.");
+        return;
+    }
+
+    //...
+    item.quantidade += delta;
+
+    if (item.quantidade <= 0) {
+        const index = cart.findIndex(p => p.idproduto === id);
+        cart.splice(index, 1);
+    }
+
+    renderCart();
+}
+
+function renderCart() {
+    const cartItems = document.getElementById("cart-itens");
+
+    cartItems.innerHTML = cart.map(item => `
+        <div class="cart-item">
+            <strong>${item.nomeproduto}</strong>
+
+            <div class="qty-controls">
+                <button onclick="changeQty('${item.idproduto}', -1)">-</button>
+
+                <span>${item.quantidade}</span>
+
+                <button onclick="changeQty('${item.idproduto}', 1)">+</button>
+            </div>
+        </div>
+    `).join("");
+
+    const total = cart.reduce(
+        (sum, item) => sum + item.precoproduto * item.quantidade,
+        0
+    );
+
+    document.getElementById("total").textContent =
+        total.toFixed(2);
+}
+
+function clearCart() {
+    cart.length = 0;
+    renderCart();
 }
 
 // ================= FUNÇÃO PARA ADICIONAR PEÇA =================
@@ -156,7 +259,7 @@ async function adicionarPeca() {
         alert("Você precisa estar logado para adicionar peças.");
         return;
     }
-    
+
     // Ajuste para lidar com a estrutura do seu login
     const dados = JSON.parse(usuarioSalvo);
     const idOrganizacao = dados.usuario.idOrganizacao;
@@ -179,7 +282,7 @@ async function adicionarPeca() {
             document.getElementById('add-nome').value = '';
             document.getElementById('add-desc').value = '';
             document.getElementById('add-preco').value = '';
-            
+
             carregarEstoqueBanco(); // Atualiza a tela com o novo item
         } else {
             alert("Erro ao salvar a peça no banco de dados.");
@@ -267,6 +370,190 @@ async function deletarPeca() {
     }
 }
 
+// ================= LÓGICA DE MOTOS =================
+
+let motos = [];
+let motoAtualId = null;
+
+async function carregarMotosBanco() {
+    const usuarioSalvo = localStorage.getItem('usuarioLogado');
+    if (!usuarioSalvo) return;
+
+    const usuario = JSON.parse(usuarioSalvo);
+    const idOrganizacao = usuario.usuario.idOrganizacao;
+
+    try {
+        const resposta = await fetchAutenticado(
+            `${API_URL}/motos/${idOrganizacao}`
+        );
+
+        if (resposta && resposta.ok) {
+            motos = await resposta.json();
+            console.log("MOTOS: ", motos);
+            renderizarMotos();
+        }
+    } catch (erro) {
+        console.error("Erro ao buscar motos:", erro);
+    }
+}
+
+function renderizarMotos() {
+    const lista = document.getElementById('lista-motos');
+    if (!lista) return;
+
+    lista.innerHTML = '';
+
+    motos.forEach(moto => {
+        const tr = document.createElement('tr');
+        tr.className = 'item-card';
+
+        const tdModelo = document.createElement('td');
+        tdModelo.textContent = moto.nomemoto;
+
+        const tdDescricao = document.createElement('td');
+        tdDescricao.textContent = moto.descricaomoto;
+
+        const tdActions = document.createElement('td');
+        tdActions.className = 'item-actions';
+
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'btn-delete';
+        btnDelete.textContent = '🗑️';
+        btnDelete.onclick = () => abrirModalDeletarMoto(moto.idmoto);
+
+        const btnEdit = document.createElement('button');
+        btnEdit.className = 'btn-edit';
+        btnEdit.textContent = '✏️';
+        btnEdit.onclick = () => abrirModalEditarMoto(moto.idmoto);
+
+        tdActions.appendChild(btnDelete);
+        tdActions.appendChild(btnEdit);
+
+        tr.appendChild(tdModelo);
+        tr.appendChild(tdDescricao);
+        tr.appendChild(tdActions);
+
+        lista.appendChild(tr);
+    });
+}
+
+async function adicionarMoto() {
+    const modelo = document.getElementById('add-nome').value;
+    const descricao = document.getElementById('add-desc').value;
+
+    if (!modelo || !descricao) {
+        alert("Por favor, preencha todos os campos.");
+        return;
+    }
+
+    // 3. Pega o ID da organização de quem está logado
+    const usuarioSalvo = localStorage.getItem('usuarioLogado');
+    if (!usuarioSalvo) {
+        alert("Você precisa estar logado para adicionar motos.");
+        return;
+    }
+
+    const dados = JSON.parse(usuarioSalvo);
+    const idOrganizacao = dados.usuario.idOrganizacao;
+
+    try {
+        const resposta = await fetchAutenticado(`${API_URL}/motos`,
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    nomeMoto: modelo,
+                    descricaoMoto: descricao,
+                    idOrganizacao: idOrganizacao
+                })
+            }
+        );
+
+        if (resposta && resposta.ok) {
+            fecharModal('modal-add-motos');
+            document.getElementById('add-nome').value = '';
+            document.getElementById('add-desc').value = '';
+
+            carregarMotosBanco();
+        } else {
+            alert("Erro ao salvar a moto no banco de dados.");
+        }
+    } catch (erro) {
+        console.error("Erro ao adicionar:", erro);
+        alert("Erro de conexão. O Back-end está rodando?");
+    }
+}
+
+function abrirModalEditarMoto(id) {
+    motoAtualId = id;
+
+    const moto = motos.find(m => m.idmoto === id);
+    if (!moto) return;
+
+    document.getElementById('edit-nome').value = moto.nomemoto || '';
+    document.getElementById('edit-desc').value = moto.descricaomoto || '';
+
+    abrirModal('modal-edit');
+}
+
+async function salvarEdicaoMoto() {
+    const nome = document.getElementById('edit-nome').value;
+    const desc = document.getElementById('edit-desc').value;
+
+    if (!nome) {
+        alert("Por favor, preencha o nome da moto.");
+        return;
+    }
+
+    try {
+        const resposta = await fetchAutenticado(
+            `${API_URL}/motos/${motoAtualId}`,
+            {
+                method: 'PUT',
+                body: JSON.stringify({
+                    nomeMoto: nome,
+                    descricaoMoto: desc
+                })
+            }
+        );
+
+        if (resposta && resposta.ok) {
+            fecharModal('modal-edit');
+            carregarMotosBanco();
+        } else {
+            alert("Erro ao atualizar a moto.");
+        }
+    } catch (erro) {
+        console.error("Erro ao editar:", erro);
+        alert("Erro de conexão. O Back-end está rodando?");
+    }
+}
+
+function abrirModalDeletarMoto(id) {
+    motoAtualId = id;
+    abrirModal('modal-delete');
+}
+
+async function deletarMoto() {
+    try {
+        const resposta = await fetchAutenticado(
+            `${API_URL}/motos/${motoAtualId}`,
+            {
+                method: 'DELETE'
+            }
+        );
+
+        if (resposta && resposta.ok) {
+            fecharModal('modal-delete');
+            carregarMotosBanco();
+        } else {
+            alert("Erro ao deletar a moto.");
+        }
+    } catch (erro) {
+        console.error("Erro ao deletar:", erro);
+        alert("Erro de conexão. O Back-end está rodando?");
+    }
+}
+
 // ================= HELPERS DE MODAL =================
 
 function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
@@ -276,6 +563,12 @@ function fecharModalFora(event, id) { if (event.target.id === id) fecharModal(id
 // Ao carregar a página de estoque, chama a função que busca no banco
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('lista-pecas')) {
+        carregarEstoqueBanco();
+    }
+    if (document.getElementById('lista-motos')) {
+        carregarMotosBanco();
+    }
+    if (document.getElementById('lista-pecas-alt')) {
         carregarEstoqueBanco();
     }
 });
