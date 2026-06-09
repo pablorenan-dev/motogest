@@ -251,6 +251,9 @@
 
     // ── Renderizar mensagem ───────────────────────────────────────────────────
     function appendMensagem(msg) {
+        // Ignora mensagens sem conteúdo exibível (reações, protocolo, mensagens vazias sem mídia)
+        if (msg.body === null) return;
+        if (msg.body === '' && !msg.mediaType && !msg.mediaBase64) return;
         const area = document.getElementById('chat-messages-area');
         const cls  = msg.fromMe ? 'msg-mine' : 'msg-other';
         const hora = msg.timestamp ? formatarHora(msg.timestamp) : '';
@@ -426,24 +429,51 @@
     }
 
     function formatarJid(jid = '') {
-        if (jid.endsWith('@g.us')) return 'Grupo';
+        if (jid.endsWith('@g.us'))  return 'Grupo';
+        if (jid.endsWith('@broadcast')) return 'Broadcast';
         const num = jid.split('@')[0];
-        if (!/^\d+$/.test(num)) return num;
-        // Número brasileiro: +55 (DD) XXXXX-XXXX
-        if (num.length === 13 && num.startsWith('55')) {
+        if (!/^\d+$/.test(num)) return num; // não numérico: retorna como está
+        // LID ou número muito longo (≥15 dígitos) — não é número de telefone real
+        if (num.length >= 15) return `+${num.slice(0,4)}…${num.slice(-4)}`;
+        // Brasileiro: +55 (DD) XXXXX-XXXX
+        if (num.length === 13 && num.startsWith('55'))
             return `+55 (${num.slice(2,4)}) ${num.slice(4,9)}-${num.slice(9)}`;
-        }
-        // Número brasileiro sem nono dígito: +55 (DD) XXXX-XXXX
-        if (num.length === 12 && num.startsWith('55')) {
+        // Brasileiro sem nono dígito: +55 (DD) XXXX-XXXX
+        if (num.length === 12 && num.startsWith('55'))
             return `+55 (${num.slice(2,4)}) ${num.slice(4,8)}-${num.slice(8)}`;
-        }
-        // Outros: +{código} {últimos 4 separados por hífen}
-        return `+${num.slice(0, -4)} ${num.slice(-4)}`;
+        // EUA/Canadá: +1 (XXX) XXX-XXXX
+        if (num.length === 11 && num.startsWith('1'))
+            return `+1 (${num.slice(1,4)}) ${num.slice(4,7)}-${num.slice(7)}`;
+        // Genérico com code de país
+        return `+${num}`;
     }
 
     function escHtml(s = '') {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+
+    // ── Org name no sidebar ───────────────────────────────────────────────────
+    (async () => {
+        const sidebarLogo = document.querySelector('.sidebar-logo');
+        if (!sidebarLogo) return;
+        const row = document.createElement('div');
+        row.className = 'logo-row';
+        Array.from(sidebarLogo.childNodes).forEach(n => row.appendChild(n));
+        sidebarLogo.appendChild(row);
+        const orgSpan = document.createElement('span');
+        orgSpan.className = 'sidebar-org-name';
+        sidebarLogo.appendChild(orgSpan);
+        let nome = localStorage.getItem('nomeOrganizacao');
+        if (!nome) {
+            try {
+                const { usuario } = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+                const r = await fetch(`${API}/organizacoes/${usuario?.idOrganizacao}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const d = await r.json();
+                if (d?.nomeorganizacao) { nome = d.nomeorganizacao; localStorage.setItem('nomeOrganizacao', nome); }
+            } catch {}
+        }
+        if (nome) orgSpan.textContent = nome;
+    })();
 
     // ── Init: busca estado inicial ────────────────────────────────────────────
     fetch(`${API}/whatsapp/status`, { headers: { 'Authorization': `Bearer ${token}` } })

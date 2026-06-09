@@ -46,9 +46,20 @@
             <button class="btn-cancel" onclick="limparFiltros()">Limpar</button>
         </div>
 
-        <!-- Gráfico -->
-        <div class="grafico-container">
-            <canvas id="grafico-vendas"></canvas>
+        <!-- Gráficos -->
+        <div class="graficos-row">
+            <div class="grafico-card">
+                <div class="grafico-titulo">Receita por dia</div>
+                <div class="grafico-container">
+                    <canvas id="grafico-vendas"></canvas>
+                </div>
+            </div>
+            <div class="grafico-card">
+                <div class="grafico-titulo">Produtos mais vendidos</div>
+                <div class="grafico-container grafico-pizza-container">
+                    <canvas id="grafico-pizza"></canvas>
+                </div>
+            </div>
         </div>
 
         <!-- Tabela de histórico -->

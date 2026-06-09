@@ -233,6 +233,7 @@
         if (!confirm('Deseja realmente sair?')) return;
         localStorage.removeItem('token');
         localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('nomeOrganizacao');
         window.location.href = 'login.html';
     }
 
@@ -261,6 +262,29 @@
         document.getElementById('conf-msg').style.display = 'block';
         setTimeout(() => document.getElementById('conf-msg').style.display = 'none', 3000);
     }
+
+    // ── Org name no sidebar ───────────────────────────────────────────────────
+    (async () => {
+        const sidebarLogo = document.querySelector('.sidebar-logo');
+        if (!sidebarLogo) return;
+        const row = document.createElement('div');
+        row.className = 'logo-row';
+        Array.from(sidebarLogo.childNodes).forEach(n => row.appendChild(n));
+        sidebarLogo.appendChild(row);
+        const orgSpan = document.createElement('span');
+        orgSpan.className = 'sidebar-org-name';
+        sidebarLogo.appendChild(orgSpan);
+        let nome = localStorage.getItem('nomeOrganizacao');
+        if (!nome) {
+            try {
+                const { usuario } = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+                const r = await fetch(`${API}/organizacoes/${usuario?.idOrganizacao}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const d = await r.json();
+                if (d?.nomeorganizacao) { nome = d.nomeorganizacao; localStorage.setItem('nomeOrganizacao', nome); }
+            } catch {}
+        }
+        if (nome) orgSpan.textContent = nome;
+    })();
 
     // ── Init ──────────────────────────────────────────────────────────────────
     carregarOpcoes();

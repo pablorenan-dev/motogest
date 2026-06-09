@@ -22,6 +22,7 @@ async function fetchAutenticado(url, opcoes = {}) {
     if (resposta.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('nomeOrganizacao');
         window.location.href = 'login.html';
         return;
     }
@@ -144,6 +145,10 @@ function renderizarEstoque(data = pecas) {
     if (document.getElementById('lista-pecas') != null) {
         const lista = document.getElementById('lista-pecas');
         lista.innerHTML = "";
+        if (data.length === 0) {
+            lista.innerHTML = `<tr><td colspan="5" class="empty-state-row"><span class="empty-state-icon">📦</span><span>Nenhuma peça cadastrada ainda.</span></td></tr>`;
+            return;
+        }
         data.forEach(peca => {
             const tr = document.createElement('tr');
             const eCritica = peca.quantidadeproduto !== null && peca.quantidademinimaproduto !== null
@@ -179,6 +184,11 @@ function renderizarEstoque(data = pecas) {
     } else if (document.getElementById('lista-pecas-alt') != null) {
         const lista = document.getElementById('lista-pecas-alt');
         lista.innerHTML = "";
+        if (data.length === 0) {
+            lista.innerHTML = `<div class="empty-state-row"><span class="empty-state-icon">📦</span><span>Nenhum produto cadastrado ainda.</span></div>`;
+            renderCart();
+            return;
+        }
         data.forEach(peca => {
             const div = document.createElement('div');
             div.className = 'product-card';
@@ -201,7 +211,7 @@ async function adicionarPeca() {
     const preco      = document.getElementById('add-preco').value;
     const quantidade = document.getElementById('add-quantidade').value;
     const qtdMin     = document.getElementById('add-qtd-min').value;
-    if (!nome || !desc || !preco) { alert("Preencha nome, descrição e preço."); return; }
+    if (!nome || !preco) { alert("Preencha nome e preço."); return; }
     const usuarioSalvo = localStorage.getItem('usuarioLogado');
     if (!usuarioSalvo) return;
     const dados = JSON.parse(usuarioSalvo);
@@ -245,7 +255,7 @@ async function salvarEdicao() {
     const preco     = document.getElementById('edit-preco').value;
     const quantidade= document.getElementById('edit-quantidade').value;
     const qtdMin    = document.getElementById('edit-qtd-min').value;
-    if (!nome || !desc || !preco) { alert("Preencha os campos obrigatórios."); return; }
+    if (!nome || !preco) { alert("Preencha nome e preço."); return; }
     try {
         const resposta = await fetchAutenticado(`${API_URL}/produtos/${pecaAtualId}`, {
             method: 'PUT',
@@ -362,6 +372,10 @@ function renderizarMotos(data = motos) {
     const lista = document.getElementById('lista-motos');
     if (!lista) return;
     lista.innerHTML = '';
+    if (data.length === 0) {
+        lista.innerHTML = `<tr><td colspan="4" class="empty-state-row"><span class="empty-state-icon">🏍️</span><span>Nenhuma moto cadastrada ainda.</span></td></tr>`;
+        return;
+    }
     data.forEach(moto => {
         const tr = document.createElement('tr');
         tr.className = 'item-card';
@@ -488,6 +502,10 @@ function renderizarContatos(data = contatos) {
     const lista = document.getElementById('lista-contatos');
     if (!lista) return;
     lista.innerHTML = '';
+    if (data.length === 0) {
+        lista.innerHTML = `<tr><td colspan="5" class="empty-state-row"><span class="empty-state-icon">👥</span><span>Nenhum contato cadastrado ainda.</span></td></tr>`;
+        return;
+    }
     data.forEach(contato => {
         const tr = document.createElement('tr');
         tr.className = 'item-card';
@@ -628,6 +646,7 @@ async function sincronizarMotosDosContato(idContato, idsMotosSelecionadas) {
 
 let vendas = [];
 let grafico = null;
+let graficoPizza = null;
 
 async function carregarVendasBanco() {
     const usuarioSalvo = localStorage.getItem('usuarioLogado');
@@ -661,6 +680,7 @@ function limparFiltros() {
 function renderizarRelatorios(dados) {
     renderizarTabelaVendas(dados);
     renderizarGrafico(dados);
+    renderizarGraficoPizza(dados);
     atualizarResumo(dados);
 }
 
@@ -736,6 +756,65 @@ function renderizarGrafico(dados) {
     });
 }
 
+function renderizarGraficoPizza(dados) {
+    const ctx = document.getElementById('grafico-pizza');
+    if (!ctx) return;
+
+    // Agrega quantidade total por produto
+    const porProduto = {};
+    dados.forEach(venda => {
+        (venda.itens || []).forEach(item => {
+            porProduto[item.nomeproduto] = (porProduto[item.nomeproduto] || 0) + Number(item.quantidade || 1);
+        });
+    });
+
+    const entradas = Object.entries(porProduto).sort((a, b) => b[1] - a[1]);
+    // Limita a 7 produtos; o restante agrupa como "Outros"
+    const TOP = 7;
+    let labels, valores;
+    if (entradas.length > TOP) {
+        const top     = entradas.slice(0, TOP);
+        const outros  = entradas.slice(TOP).reduce((s, [, v]) => s + v, 0);
+        labels  = [...top.map(([k]) => k), 'Outros'];
+        valores = [...top.map(([, v]) => v), outros];
+    } else {
+        labels  = entradas.map(([k]) => k);
+        valores = entradas.map(([, v]) => v);
+    }
+
+    const CORES = ['#2d9e6b','#457b9d','#e76f51','#6a4c93','#f4a261','#e63946','#2a9d8f','#adb5bd'];
+
+    if (graficoPizza) graficoPizza.destroy();
+
+    if (labels.length === 0) {
+        graficoPizza = null;
+        ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+        return;
+    }
+
+    graficoPizza = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data:            valores,
+                backgroundColor: CORES.slice(0, labels.length),
+                borderWidth:     2,
+                borderColor:     '#fff',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed} un.` } }
+            },
+            cutout: '55%',
+        }
+    });
+}
+
 // ================= FILTROS DAS TELAS =================
 
 function setupFiltros() {
@@ -779,7 +858,48 @@ function setupFiltros() {
 
 function abrirModal(id)  { document.getElementById(id).style.display = 'flex'; }
 function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
+
+function stepQty(id, delta) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
+}
 function fecharModalFora(event, id) { if (event.target.id === id) fecharModal(id); }
+
+// ================= SIDEBAR ORG NAME =================
+
+async function injetarNomeOrg() {
+    const sidebarLogo = document.querySelector('.sidebar-logo');
+    if (!sidebarLogo) return;
+
+    // Reestrutura: envolve ícone + texto numa .logo-row
+    const row = document.createElement('div');
+    row.className = 'logo-row';
+    Array.from(sidebarLogo.childNodes).forEach(n => row.appendChild(n));
+    sidebarLogo.appendChild(row);
+
+    // Cria o span do nome da org
+    const orgSpan = document.createElement('span');
+    orgSpan.className = 'sidebar-org-name';
+    sidebarLogo.appendChild(orgSpan);
+
+    // Tenta o cache primeiro
+    let nome = localStorage.getItem('nomeOrganizacao');
+    if (nome) { orgSpan.textContent = nome; return; }
+
+    // Busca na API e cacheia
+    try {
+        const usuarioSalvo = localStorage.getItem('usuarioLogado');
+        if (!usuarioSalvo) return;
+        const { usuario } = JSON.parse(usuarioSalvo);
+        const r = await fetchAutenticado(`${API_URL}/organizacoes/${usuario.idOrganizacao}`);
+        const data = await r?.json();
+        if (data?.nomeorganizacao) {
+            localStorage.setItem('nomeOrganizacao', data.nomeorganizacao);
+            orgSpan.textContent = data.nomeorganizacao;
+        }
+    } catch {}
+}
 
 // ================= INIT =================
 
@@ -798,4 +918,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (temVendas)   await carregarVendasBanco();
 
     setupFiltros();
+    injetarNomeOrg();
 });

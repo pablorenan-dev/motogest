@@ -48,12 +48,26 @@
     <div id="modal-add" class="modal-overlay" onclick="fecharModalFora(event, 'modal-add')">
         <div class="modal-content">
             <h3>Adicionar Peça</h3>
-            <input type="text"   id="add-nome"      placeholder="Nome da peça">
-            <input type="text"   id="add-desc"      placeholder="Descrição">
-            <input type="number" id="add-preco"     placeholder="Preço (R$)">
+            <input type="text" id="add-nome"  placeholder="Nome da peça">
+            <input type="text" id="add-desc"  placeholder="Descrição (opcional)">
+            <input type="text" id="add-preco" placeholder="Preço (R$)" inputmode="decimal">
             <div class="modal-row">
-                <input type="number" id="add-quantidade" placeholder="Qtd. inicial">
-                <input type="number" id="add-qtd-min"    placeholder="Qtd. mínima">
+                <div class="qty-field">
+                    <label class="qty-label">Qtd. inicial</label>
+                    <div class="qty-stepper">
+                        <button class="qty-btn" type="button" onclick="stepQty('add-quantidade',-1)">−</button>
+                        <input type="text" id="add-quantidade" inputmode="numeric" placeholder="0">
+                        <button class="qty-btn" type="button" onclick="stepQty('add-quantidade', 1)">+</button>
+                    </div>
+                </div>
+                <div class="qty-field">
+                    <label class="qty-label">Qtd. mínima</label>
+                    <div class="qty-stepper">
+                        <button class="qty-btn" type="button" onclick="stepQty('add-qtd-min',-1)">−</button>
+                        <input type="text" id="add-qtd-min" inputmode="numeric" placeholder="0">
+                        <button class="qty-btn" type="button" onclick="stepQty('add-qtd-min', 1)">+</button>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn-cancel"  onclick="fecharModal('modal-add')">Cancelar</button>
@@ -66,12 +80,26 @@
     <div id="modal-edit" class="modal-overlay" onclick="fecharModalFora(event, 'modal-edit')">
         <div class="modal-content">
             <h3>Editar Peça</h3>
-            <input type="text"   id="edit-nome"      placeholder="Nome da peça">
-            <input type="text"   id="edit-desc"      placeholder="Descrição">
-            <input type="number" id="edit-preco"     placeholder="Preço (R$)">
+            <input type="text" id="edit-nome"  placeholder="Nome da peça">
+            <input type="text" id="edit-desc"  placeholder="Descrição (opcional)">
+            <input type="text" id="edit-preco" placeholder="Preço (R$)" inputmode="decimal">
             <div class="modal-row">
-                <input type="number" id="edit-quantidade" placeholder="Quantidade">
-                <input type="number" id="edit-qtd-min"    placeholder="Qtd. mínima">
+                <div class="qty-field">
+                    <label class="qty-label">Quantidade</label>
+                    <div class="qty-stepper">
+                        <button class="qty-btn" type="button" onclick="stepQty('edit-quantidade',-1)">−</button>
+                        <input type="text" id="edit-quantidade" inputmode="numeric" placeholder="0">
+                        <button class="qty-btn" type="button" onclick="stepQty('edit-quantidade', 1)">+</button>
+                    </div>
+                </div>
+                <div class="qty-field">
+                    <label class="qty-label">Qtd. mínima</label>
+                    <div class="qty-stepper">
+                        <button class="qty-btn" type="button" onclick="stepQty('edit-qtd-min',-1)">−</button>
+                        <input type="text" id="edit-qtd-min" inputmode="numeric" placeholder="0">
+                        <button class="qty-btn" type="button" onclick="stepQty('edit-qtd-min', 1)">+</button>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn-cancel"  onclick="fecharModal('modal-edit')">Cancelar</button>
