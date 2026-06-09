@@ -7,16 +7,158 @@
 </head>
 <body>
     <aside class="sidebar">
-        <div class="logo-placeholder">M</div>
-        <a href="home.html" class="nav-item active">- Home</a>
-        <a href="estoque.html" class="nav-item">- Estoque</a>
-        <a href="moto.html" class="nav-item">- Motos</a>
-        <a href="vendas.html" class="nav-item">- Vendas</a>
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html" class="nav-item active">Home</a>
+        <a href="estoque.html" class="nav-item">Estoque</a>
+        <a href="moto.html" class="nav-item">Motos</a>
+        <a href="contato.html" class="nav-item">Contatos</a>
+        <a href="vendas.html" class="nav-item">Vendas</a>
+        <a href="relatorios.html"    class="nav-item">Relatórios</a>
+        <a href="chats.html"         class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
     </aside>
 
     <main class="main-content">
-        <h2>Home</h2>
-        <p>Bem-vindo ao sistema Motogest. Mais informações em breve.</p>
+
+        <!-- Cabeçalho -->
+        <div class="home-header">
+            <div>
+                <h2>Painel</h2>
+                <p class="home-subtitle">Visão geral do sistema</p>
+            </div>
+        </div>
+
+        <!-- Cards de atalho -->
+        <div class="shortcut-grid">
+            <a href="estoque.html" class="shortcut-card">
+                <div class="shortcut-icon sc-estoque">&#9634;</div>
+                <div class="shortcut-info">
+                    <div class="shortcut-title">Estoque</div>
+                    <div class="shortcut-sub">Gerenciar peças</div>
+                </div>
+            </a>
+            <a href="moto.html" class="shortcut-card">
+                <div class="shortcut-icon sc-motos">&#9650;</div>
+                <div class="shortcut-info">
+                    <div class="shortcut-title">Motos</div>
+                    <div class="shortcut-sub">Cadastro de motos</div>
+                </div>
+            </a>
+            <a href="contato.html" class="shortcut-card">
+                <div class="shortcut-icon sc-contatos">&#9632;</div>
+                <div class="shortcut-info">
+                    <div class="shortcut-title">Contatos</div>
+                    <div class="shortcut-sub">Clientes e donos</div>
+                </div>
+            </a>
+            <a href="vendas.html" class="shortcut-card">
+                <div class="shortcut-icon sc-vendas">&#9679;</div>
+                <div class="shortcut-info">
+                    <div class="shortcut-title">Nova Venda</div>
+                    <div class="shortcut-sub">Registrar venda</div>
+                </div>
+            </a>
+            <a href="relatorios.html" class="shortcut-card">
+                <div class="shortcut-icon sc-relatorios">&#9636;</div>
+                <div class="shortcut-info">
+                    <div class="shortcut-title">Relatórios</div>
+                    <div class="shortcut-sub">Histórico e métricas</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Métricas rápidas -->
+        <div class="home-section-title">Métricas</div>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total de peças</div>
+                <div class="metric-value" id="metric-pecas">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Motos cadastradas</div>
+                <div class="metric-value" id="metric-motos">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Contatos</div>
+                <div class="metric-value" id="metric-contatos">-</div>
+            </div>
+            <div class="metric-card metric-alert">
+                <div class="metric-label">Peças críticas</div>
+                <div class="metric-value" id="metric-criticas">-</div>
+            </div>
+        </div>
+
+        <!-- Vendas recentes -->
+        <div class="home-section-title" style="margin-top: 32px;">Vendas recentes</div>
+        <div class="home-vendas-lista" id="home-vendas">
+            <div class="home-empty">Carregando...</div>
+        </div>
+
     </main>
+
+    <script src="app.js"></script>
+    <script>
+        async function carregarDashboard() {
+            const usuarioSalvo = localStorage.getItem('usuarioLogado');
+            if (!usuarioSalvo) return;
+            const usuario = JSON.parse(usuarioSalvo);
+            const idOrg = usuario.usuario.idOrganizacao;
+
+            const [rPecas, rMotos, rContatos, rVendas] = await Promise.all([
+                fetchAutenticado(`${API_URL}/produtos/${idOrg}`),
+                fetchAutenticado(`${API_URL}/motos/${idOrg}`),
+                fetchAutenticado(`${API_URL}/contatos/${idOrg}`),
+                fetchAutenticado(`${API_URL}/vendas/${idOrg}`)
+            ]);
+
+            if (rPecas && rPecas.ok) {
+                const pecas = await rPecas.json();
+                document.getElementById('metric-pecas').textContent = pecas.length;
+                const criticas = pecas.filter(p =>
+                    p.quantidadeproduto !== null && p.quantidademinimaproduto !== null
+                    && p.quantidadeproduto <= p.quantidademinimaproduto
+                ).length;
+                document.getElementById('metric-criticas').textContent = criticas;
+                if (criticas > 0) document.getElementById('metric-criticas').closest('.metric-card').classList.add('metric-alert-active');
+            }
+
+            if (rMotos && rMotos.ok) {
+                const motos = await rMotos.json();
+                document.getElementById('metric-motos').textContent = motos.length;
+            }
+
+            if (rContatos && rContatos.ok) {
+                const contatos = await rContatos.json();
+                document.getElementById('metric-contatos').textContent = contatos.length;
+            }
+
+            if (rVendas && rVendas.ok) {
+                const vendas = await rVendas.json();
+                const lista = document.getElementById('home-vendas');
+
+                if (vendas.length === 0) {
+                    lista.innerHTML = '<div class="home-empty">Nenhuma venda registrada ainda.</div>';
+                    return;
+                }
+
+                const recentes = vendas.slice(0, 6);
+                lista.innerHTML = recentes.map(v => {
+                    const data = new Date(v.datavenda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const itens = v.itens.length > 0 ? v.itens.map(i => i.nomeproduto).join(', ') : '-';
+                    return `
+                        <div class="home-venda-card">
+                            <div class="hvc-data">${data}</div>
+                            <div class="hvc-itens">${itens}</div>
+                            <div class="hvc-total">R$ ${Number(v.valortotal).toFixed(2)}</div>
+                        </div>`;
+                }).join('');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', carregarDashboard);
+    </script>
 </body>
 </html>

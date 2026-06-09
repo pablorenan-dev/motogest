@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Chats - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="chat-body">
+
+    <!-- Nav sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html"        class="nav-item">Home</a>
+        <a href="estoque.html"     class="nav-item">Estoque</a>
+        <a href="moto.html"        class="nav-item">Motos</a>
+        <a href="contato.html"     class="nav-item">Contatos</a>
+        <a href="vendas.html"      class="nav-item">Vendas</a>
+        <a href="relatorios.html"  class="nav-item">Relatórios</a>
+        <a href="chats.html"       class="nav-item active">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
+    </aside>
+
+    <!-- Chat layout -->
+    <div class="chat-layout">
+
+        <!-- Painel esquerdo: lista de conversas -->
+        <div class="chat-list-panel">
+            <div class="chat-list-header">
+                <span>Conversas</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button class="btn-nova-conversa" title="Nova conversa" onclick="abrirNovaConversa()">&#43;</button>
+                    <div class="wa-status-dot" id="wa-dot" title="Desconectado"></div>
+                </div>
+            </div>
+            <div class="chat-search-wrap">
+                <input class="chat-search-input" id="chat-search" placeholder="Buscar conversa...">
+            </div>
+            <div class="chat-items-scroll" id="chat-items">
+                <div class="chat-list-empty">Aguardando conexão...</div>
+            </div>
+        </div>
+
+        <!-- Painel central: conversa ativa -->
+        <div class="chat-main" id="chat-main">
+            <div class="chat-empty-state" id="chat-empty">
+                <div class="chat-empty-icon">💬</div>
+                <div class="chat-empty-title">Selecione uma conversa</div>
+                <div class="chat-empty-sub">Suas mensagens do WhatsApp aparecerão aqui</div>
+            </div>
+
+            <!-- Header da conversa (oculto até selecionar) -->
+            <div class="chat-conv-header" id="chat-conv-header" style="display:none">
+                <div class="chat-conv-avatar" id="conv-avatar">?</div>
+                <div class="chat-conv-info">
+                    <div class="chat-conv-name"  id="conv-name">—</div>
+                    <div class="chat-conv-jid"   id="conv-jid">—</div>
+                </div>
+                <button class="chat-info-toggle" id="btn-info-toggle" title="Informações" onclick="toggleInfoPanel()">&#9432;</button>
+            </div>
+
+            <!-- Mensagens -->
+            <div class="chat-messages-area" id="chat-messages-area" style="display:none"></div>
+
+            <!-- Input -->
+            <div class="chat-input-bar" id="chat-input-bar" style="display:none">
+                <textarea class="chat-input-text" id="chat-input" placeholder="Digite uma mensagem..." rows="1"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMsg();}"></textarea>
+                <button class="chat-send-btn" onclick="enviarMsg()">&#10148;</button>
+            </div>
+        </div>
+
+        <!-- Painel direito: info (colapsável) -->
+        <div class="chat-info-panel" id="chat-info-panel">
+            <div class="chat-info-header">
+                <span>Detalhes</span>
+                <button class="chat-info-close" onclick="toggleInfoPanel()">&#10005;</button>
+            </div>
+            <div class="chat-info-body">
+                <div class="info-avatar-lg" id="info-avatar-lg">?</div>
+                <div class="info-name"       id="info-name">—</div>
+                <div class="info-jid"        id="info-jid">—</div>
+                <hr class="info-divider">
+                <div class="info-section-label">Tipo</div>
+                <div class="info-value"      id="info-tipo">—</div>
+            </div>
+        </div>
+
+    </div><!-- .chat-layout -->
+
+    <!-- Modal: nova conversa -->
+    <div class="modal-overlay" id="modal-nova-conversa" style="display:none" onclick="if(event.target===this)fecharNovaConversa()">
+        <div class="modal" style="max-width:380px">
+            <h3 style="margin-bottom:16px">Nova conversa</h3>
+            <label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:4px">Número de telefone</label>
+            <input type="tel" id="input-novo-telefone" class="modal-input"
+                placeholder="Ex: 5511999999999"
+                style="width:100%;box-sizing:border-box"
+                onkeydown="if(event.key==='Enter')confirmarNovaConversa()">
+            <p style="font-size:12px;color:#888;margin:6px 0 16px">Inclua o código do país (55 para Brasil) e DDD.</p>
+            <div id="nova-conversa-erro" style="display:none;color:#ef4444;font-size:13px;margin-bottom:10px"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end">
+                <button class="btn-cancel" onclick="fecharNovaConversa()">Cancelar</button>
+                <button class="btn-confirm" id="btn-nova-conversa-ok" onclick="confirmarNovaConversa()">Iniciar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox de imagem -->
+    <div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;cursor:zoom-out" onclick="this.style.display='none'">
+        <img id="lightbox-img" src="" style="max-width:90vw;max-height:90vh;border-radius:6px;box-shadow:0 4px 32px rgba(0,0,0,0.5);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)">
+    </div>
+
+    <script>
+    const API = 'http://localhost:3001/api';
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+
+    let chatAtual   = null;
+    let todosChats  = [];
+    let infoPanelAberto = true;
+
+    // ── SSE ──────────────────────────────────────────────────────────────────
+    const es = new EventSource(`${API}/whatsapp/sse?token=${token}`);
+
+    es.addEventListener('status', e => {
+        const { status, qr } = JSON.parse(e.data);
+        atualizarDot(status);
+        if (status === 'qr' || status === 'disconnected') {
+            document.getElementById('chat-items').innerHTML =
+                `<div class="chat-list-empty">
+                    <p>${status === 'qr' ? 'Conecte via QR em Configurações.' : 'WhatsApp desconectado.'}</p>
+                    <a href="configuracoes.html" class="link-config">Ir para Configurações</a>
+                 </div>`;
+        }
+    });
+
+    es.addEventListener('qr', () => {
+        document.getElementById('chat-items').innerHTML =
+            `<div class="chat-list-empty">
+                <p>Escaneie o QR em Configurações.</p>
+                <a href="configuracoes.html" class="link-config">Ir para Configurações</a>
+             </div>`;
+    });
+
+    es.addEventListener('chats', e => {
+        todosChats = JSON.parse(e.data);
+        renderizarListaChats(todosChats);
+    });
+
+    es.addEventListener('mensagem', e => {
+        const msg = JSON.parse(e.data);
+        if (msg.jid === chatAtual) {
+            appendMensagem(msg);
+            scrollToBottom();
+        }
+        // Atualiza preview na lista
+        const chat = todosChats.find(c => c.jid === msg.jid);
+        if (chat) { chat.lastMsg = msg; chat.ts = msg.timestamp; }
+        renderizarListaChats(todosChats);
+    });
+
+    es.onerror = () => atualizarDot('disconnected');
+
+    // ── Dot de status ─────────────────────────────────────────────────────────
+    function atualizarDot(status) {
+        const dot = document.getElementById('wa-dot');
+        dot.className = 'wa-status-dot wa-dot-' + status;
+        dot.title = { connected: 'Conectado', qr: 'Aguardando QR', connecting: 'Conectando...', disconnected: 'Desconectado' }[status] || status;
+    }
+
+    // ── Lista de chats ────────────────────────────────────────────────────────
+    function renderizarListaChats(chats) {
+        const q = document.getElementById('chat-search').value.toLowerCase();
+        const filtrados = q ? chats.filter(c => c.nome.toLowerCase().includes(q)) : chats;
+        const el = document.getElementById('chat-items');
+
+        if (filtrados.length === 0) {
+            el.innerHTML = '<div class="chat-list-empty">Nenhuma conversa encontrada.</div>';
+            return;
+        }
+
+        el.innerHTML = filtrados.map(c => {
+            const iniciais = initials(c.nome);
+            const cor      = avatarColor(c.jid);
+            const preview  = c.lastMsg?.body || '';
+            const hora     = c.ts ? formatarHora(c.ts) : '';
+            const ativo    = c.jid === chatAtual ? 'chat-item-active' : '';
+            const badge    = c.naoLidas > 0 ? `<span class="chat-badge">${c.naoLidas}</span>` : '';
+            return `
+            <div class="chat-item ${ativo}" onclick="selecionarChat('${c.jid}', '${escHtml(c.nome)}')">
+                <div class="chat-item-av" style="background:${cor}">${iniciais}</div>
+                <div class="chat-item-info">
+                    <div class="chat-item-row">
+                        <span class="chat-item-name">${escHtml(c.nome)}</span>
+                        <span class="chat-item-time">${hora}</span>
+                    </div>
+                    <div class="chat-item-row">
+                        <span class="chat-item-preview">${escHtml(preview)}</span>
+                        ${badge}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    document.getElementById('chat-search').addEventListener('input', () => renderizarListaChats(todosChats));
+
+    // ── Selecionar chat ───────────────────────────────────────────────────────
+    async function selecionarChat(jid, nome) {
+        chatAtual = jid;
+
+        // Atualiza UI header
+        const iniciais = initials(nome);
+        const cor      = avatarColor(jid);
+        document.getElementById('chat-empty').style.display       = 'none';
+        document.getElementById('chat-conv-header').style.display = 'flex';
+        document.getElementById('chat-messages-area').style.display = 'flex';
+        document.getElementById('chat-input-bar').style.display   = 'flex';
+
+        document.getElementById('conv-avatar').textContent           = iniciais;
+        document.getElementById('conv-avatar').style.background      = cor;
+        document.getElementById('conv-name').textContent             = nome;
+        document.getElementById('conv-jid').textContent              = formatarJid(jid);
+        document.getElementById('info-avatar-lg').textContent        = iniciais;
+        document.getElementById('info-avatar-lg').style.background   = cor;
+        document.getElementById('info-name').textContent             = nome;
+        document.getElementById('info-jid').textContent              = formatarJid(jid);
+        document.getElementById('info-tipo').textContent             = jid.endsWith('@g.us') ? 'Grupo' : 'Contato';
+
+        renderizarListaChats(todosChats); // atualiza classe ativo
+
+        // Carrega mensagens
+        const area = document.getElementById('chat-messages-area');
+        area.innerHTML = '<div class="chat-loading">Carregando...</div>';
+
+        try {
+            const r = await fetch(`${API}/whatsapp/mensagens/${encodeURIComponent(jid)}?limit=50`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const msgs = await r.json();
+            area.innerHTML = '';
+            msgs.forEach(m => appendMensagem(m));
+            scrollToBottom();
+        } catch {
+            area.innerHTML = '<div class="chat-loading">Erro ao carregar mensagens.</div>';
+        }
+    }
+
+    // ── Renderizar mensagem ───────────────────────────────────────────────────
+    function appendMensagem(msg) {
+        const area = document.getElementById('chat-messages-area');
+        const cls  = msg.fromMe ? 'msg-mine' : 'msg-other';
+        const hora = msg.timestamp ? formatarHora(msg.timestamp) : '';
+        const name = (!msg.fromMe && msg.pushName && chatAtual?.endsWith('@g.us'))
+            ? `<div class="msg-sender">${escHtml(msg.pushName)}</div>` : '';
+
+        let mediaHtml = '';
+        if (msg.mediaBase64) {
+            if (msg.mediaType === 'image') {
+                mediaHtml = `<img class="msg-img" src="${msg.mediaBase64}" onclick="abrirLightbox(this.src)" title="Clique para ampliar">`;
+            } else if (msg.mediaType === 'audio') {
+                mediaHtml = `<audio class="msg-audio" controls src="${msg.mediaBase64}"></audio>`;
+            }
+        } else if (msg.mediaType === 'video') {
+            mediaHtml = `<div class="msg-media-placeholder">🎥 Vídeo
+                <button class="btn-baixar-media" onclick="baixarMedia('${msg.jid}','${msg.id}','video',this)">⬇ Baixar</button>
+            </div>`;
+        } else if (msg.mediaType === 'document') {
+            mediaHtml = `<div class="msg-media-placeholder">📄 ${escHtml(msg.body || 'Arquivo')}
+                <button class="btn-baixar-media" onclick="baixarMedia('${msg.jid}','${msg.id}','doc',this)">⬇ Baixar</button>
+            </div>`;
+        }
+
+        const bodyHtml = (msg.body && msg.body !== '[mensagem de voz]' && msg.body !== '[áudio]')
+            ? `<div class="msg-body">${escHtml(msg.body)}</div>` : '';
+
+        const div = document.createElement('div');
+        div.className = `msg-row ${cls}`;
+        div.innerHTML = `
+            <div class="msg-bubble ${cls}">
+                ${name}
+                ${mediaHtml}
+                ${bodyHtml}
+                <div class="msg-time">${hora}</div>
+            </div>`;
+        area.appendChild(div);
+    }
+
+    // ── Lightbox ──────────────────────────────────────────────────────────────
+    function abrirLightbox(src) {
+        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lightbox').style.display = 'block';
+    }
+
+    // ── Download de mídia ─────────────────────────────────────────────────────
+    async function baixarMedia(jid, msgId, tipo, btn) {
+        btn.disabled = true;
+        btn.classList.add('baixando');
+        btn.textContent = '⏳ Baixando...';
+        try {
+            const r = await fetch(`${API}/whatsapp/media/${encodeURIComponent(jid)}/${encodeURIComponent(msgId)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!r.ok) throw new Error('Erro ao baixar.');
+            const blob = await r.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `${tipo}_${msgId}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            btn.textContent = '✓ Baixado';
+        } catch {
+            btn.textContent = '⬇ Baixar';
+            btn.disabled = false;
+            btn.classList.remove('baixando');
+        }
+    }
+
+    // ── Nova conversa ─────────────────────────────────────────────────────────
+    function abrirNovaConversa() {
+        document.getElementById('input-novo-telefone').value = '';
+        document.getElementById('nova-conversa-erro').style.display = 'none';
+        document.getElementById('modal-nova-conversa').style.display = 'flex';
+        setTimeout(() => document.getElementById('input-novo-telefone').focus(), 50);
+    }
+
+    function fecharNovaConversa() {
+        document.getElementById('modal-nova-conversa').style.display = 'none';
+    }
+
+    async function confirmarNovaConversa() {
+        const telefone = document.getElementById('input-novo-telefone').value.trim();
+        const erroEl   = document.getElementById('nova-conversa-erro');
+        const btnOk    = document.getElementById('btn-nova-conversa-ok');
+        erroEl.style.display = 'none';
+
+        if (!telefone) { erroEl.textContent = 'Informe um número.'; erroEl.style.display = 'block'; return; }
+
+        btnOk.disabled = true;
+        btnOk.textContent = 'Verificando...';
+
+        try {
+            const r = await fetch(`${API}/whatsapp/iniciar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ telefone })
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || 'Erro desconhecido.');
+
+            fecharNovaConversa();
+            selecionarChat(data.jid, data.nome);
+        } catch (e) {
+            erroEl.textContent = e.message;
+            erroEl.style.display = 'block';
+        } finally {
+            btnOk.disabled = false;
+            btnOk.textContent = 'Iniciar';
+        }
+    }
+
+    // ── Enviar mensagem ───────────────────────────────────────────────────────
+    async function enviarMsg() {
+        const input = document.getElementById('chat-input');
+        const texto = input.value.trim();
+        if (!texto || !chatAtual) return;
+
+        input.value = '';
+        input.style.height = 'auto';
+
+        try {
+            const r = await fetch(`${API}/whatsapp/enviar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ jid: chatAtual, texto })
+            });
+            if (r.ok) {
+                const { mensagem } = await r.json();
+                appendMensagem(mensagem);
+                scrollToBottom();
+            }
+        } catch { /* silent */ }
+    }
+
+    // ── Info panel ────────────────────────────────────────────────────────────
+    function toggleInfoPanel() {
+        infoPanelAberto = !infoPanelAberto;
+        document.getElementById('chat-info-panel').classList.toggle('fechado', !infoPanelAberto);
+    }
+
+    // ── Auto-resize textarea ──────────────────────────────────────────────────
+    document.getElementById('chat-input').addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+
+    // ── Scroll ────────────────────────────────────────────────────────────────
+    function scrollToBottom() {
+        const a = document.getElementById('chat-messages-area');
+        a.scrollTop = a.scrollHeight;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function initials(nome = '') {
+        return nome.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+    }
+
+    const CORES = ['#2d9e6b','#e63946','#457b9d','#e76f51','#6a4c93','#1d3557','#f4a261','#2a9d8f'];
+    function avatarColor(str = '') {
+        let h = 0;
+        for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xfffffff;
+        return CORES[h % CORES.length];
+    }
+
+    function formatarHora(ts) {
+        const d = new Date(ts * 1000);
+        const hoje = new Date();
+        if (d.toDateString() === hoje.toDateString()) {
+            return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    }
+
+    function formatarJid(jid = '') {
+        if (jid.endsWith('@g.us')) return 'Grupo';
+        const num = jid.split('@')[0];
+        if (!/^\d+$/.test(num)) return num;
+        // Número brasileiro: +55 (DD) XXXXX-XXXX
+        if (num.length === 13 && num.startsWith('55')) {
+            return `+55 (${num.slice(2,4)}) ${num.slice(4,9)}-${num.slice(9)}`;
+        }
+        // Número brasileiro sem nono dígito: +55 (DD) XXXX-XXXX
+        if (num.length === 12 && num.startsWith('55')) {
+            return `+55 (${num.slice(2,4)}) ${num.slice(4,8)}-${num.slice(8)}`;
+        }
+        // Outros: +{código} {últimos 4 separados por hífen}
+        return `+${num.slice(0, -4)} ${num.slice(-4)}`;
+    }
+
+    function escHtml(s = '') {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Init: busca estado inicial ────────────────────────────────────────────
+    fetch(`${API}/whatsapp/status`, { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(({ status }) => atualizarDot(status))
+        .catch(() => {});
+    </script>
+</body>
+</html>

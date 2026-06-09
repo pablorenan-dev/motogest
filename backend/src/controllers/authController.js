@@ -1,6 +1,60 @@
 import pool from '../config/db.js';
 import jwt from 'jsonwebtoken';
 
+export const registro = async (req, res) => {
+    const { nomeUsuario, emailUsuario, senhaUsuario, nomeOrganizacao } = req.body;
+
+    if (!nomeUsuario || !emailUsuario || !senhaUsuario || !nomeOrganizacao) {
+        return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        const emailExiste = await client.query(
+            'SELECT 1 FROM usuario WHERE emailusuario = $1',
+            [emailUsuario]
+        );
+        if (emailExiste.rows.length > 0) {
+            return res.status(409).json({ error: 'E-mail já cadastrado.' });
+        }
+
+        await client.query('BEGIN');
+
+        const orgResult = await client.query(
+            'INSERT INTO organizacao (nomeorganizacao) VALUES ($1) RETURNING idorganizacao',
+            [nomeOrganizacao]
+        );
+        const idOrganizacao = orgResult.rows[0].idorganizacao;
+
+        const userResult = await client.query(
+            `INSERT INTO usuario (nomeusuario, emailusuario, senhausuario, idorganizacao)
+             VALUES ($1, $2, $3, $4)
+             RETURNING idusuario, nomeusuario, emailusuario, idorganizacao`,
+            [nomeUsuario, emailUsuario, senhaUsuario, idOrganizacao]
+        );
+
+        await client.query('COMMIT');
+
+        const usuario = userResult.rows[0];
+        const payload = {
+            idUsuario:     usuario.idusuario,
+            nomeUsuario:   usuario.nomeusuario,
+            emailUsuario:  usuario.emailusuario,
+            idOrganizacao: usuario.idorganizacao,
+        };
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+
+        return res.status(201).json({ message: 'Conta criada com sucesso.', token, usuario: payload });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error(error);
+        return res.status(500).json({ error: 'Erro interno do servidor.' });
+    } finally {
+        client.release();
+    }
+};
+
 export const cadastro = async (req, res) => {
     const { nomeUsuario, emailUsuario, senhaUsuario, idOrganizacao } = req.body;
 

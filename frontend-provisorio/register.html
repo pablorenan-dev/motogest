@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Criar conta - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <section class="login-page">
+        <div class="login-container" style="width:340px">
+            <h2 style="margin-bottom:4px">Motogest</h2>
+            <p style="font-size:13px;color:#888;margin-bottom:20px">Crie sua conta e organização</p>
+
+            <form onsubmit="registrar(event)">
+                <input type="text"     id="reg-nome"  placeholder="Seu nome"              required>
+                <input type="email"    id="reg-email" placeholder="E-mail"                required>
+                <input type="password" id="reg-senha" placeholder="Senha"                 required>
+
+                <div class="login-divider">organização</div>
+
+                <input type="text" id="reg-org" placeholder="Nome da sua oficina / empresa" required>
+
+                <div id="reg-error" class="error-msg"></div>
+
+                <button type="submit" id="reg-btn">Criar conta</button>
+            </form>
+
+            <p class="login-link">Já tem conta? <a href="login.html">Entrar</a></p>
+        </div>
+    </section>
+
+    <script>
+    const API = 'http://localhost:3001/api';
+
+    // Se já está logado, vai direto pro home
+    if (localStorage.getItem('token')) window.location.replace('home.html');
+
+    async function registrar(event) {
+        event.preventDefault();
+
+        const nomeUsuario    = document.getElementById('reg-nome').value.trim();
+        const emailUsuario   = document.getElementById('reg-email').value.trim();
+        const senhaUsuario   = document.getElementById('reg-senha').value;
+        const nomeOrganizacao = document.getElementById('reg-org').value.trim();
+        const errorEl        = document.getElementById('reg-error');
+        const btn            = document.getElementById('reg-btn');
+
+        errorEl.style.display = 'none';
+
+        if (senhaUsuario.length < 4) {
+            errorEl.textContent = 'A senha deve ter ao menos 4 caracteres.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Criando...';
+
+        try {
+            const r = await fetch(`${API}/auth/registro`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nomeUsuario, emailUsuario, senhaUsuario, nomeOrganizacao })
+            });
+
+            const data = await r.json();
+
+            if (!r.ok) {
+                errorEl.textContent = data.error || 'Erro ao criar conta.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('usuarioLogado', JSON.stringify(data));
+            window.location.replace('home.html');
+
+        } catch {
+            errorEl.textContent = 'Erro de conexão. Verifique o servidor.';
+            errorEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Criar conta';
+        }
+    }
+    </script>
+</body>
+</html>

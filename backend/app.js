@@ -11,6 +11,8 @@ import contatoRoutes from './src/routes/contatoRoutes.js';
 import servicoRoutes from './src/routes/servicoRoutes.js';
 import vendaRoutes from './src/routes/vendaRoutes.js';
 import compraRoutes from './src/routes/compraRoutes.js';
+import whatsappRoutes from './src/routes/whatsappRoutes.js';
+import { conectar as waConectar } from './src/services/whatsappService.js';
 
 const app = express();
 
@@ -28,6 +30,10 @@ app.use('/api/motos', autenticar, motoRoutes);
 app.use('/api/contatos', autenticar, contatoRoutes);
 app.use('/api/servicos', autenticar, servicoRoutes);
 app.use('/api/vendas', autenticar, vendaRoutes);
-app.use('/api/compras', autenticar, compraRoutes);
+app.use('/api/compras',   autenticar, compraRoutes);
+app.use('/api/whatsapp', autenticar, whatsappRoutes);
+
+// Tenta reconectar automaticamente se havia sessão salva
+waConectar().catch(() => {});
 
 export default app;

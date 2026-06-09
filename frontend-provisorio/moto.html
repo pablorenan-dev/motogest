@@ -7,19 +7,26 @@
 </head>
 <body>
     <aside class="sidebar">
-        <div class="logo-placeholder">M</div>
-        <a href="home.html" class="nav-item">- Home</a>
-        <a href="estoque.html" class="nav-item">- Estoque</a>
-        <a href="moto.html" class="nav-item active">- Motos</a>
-        <a href="vendas.html" class="nav-item">- Vendas</a>
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html" class="nav-item">Home</a>
+        <a href="estoque.html" class="nav-item">Estoque</a>
+        <a href="moto.html" class="nav-item active">Motos</a>
+        <a href="contato.html" class="nav-item">Contatos</a>
+        <a href="vendas.html" class="nav-item">Vendas</a>
+        <a href="relatorios.html"    class="nav-item">Relatórios</a>
+        <a href="chats.html"         class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
     </aside>
 
     <main class="main-content">
         <div class="estoque-header">
             <h2>Motos</h2>
             <div class="estoque-controls">
-                <input type="text" placeholder="Filtro modelo moto">
-                <button class="btn-add" onclick="abrirModal('modal-add-motos')">+</button>
+                <input type="text" id="filtro-moto" placeholder="Filtro modelo ou descrição">
+                <button class="btn-add" onclick="prepararAddMotoModal()">+</button>
             </div>
         </div>
 
@@ -28,6 +35,7 @@
                 <tr>
                     <th>Modelo</th>
                     <th>Descrição</th>
+                    <th>Contatos</th>
                     <th>Ações</th>
                 </tr>
             </thead>
@@ -35,11 +43,14 @@
         </table>
     </main>
 
+    <!-- Modal: Adicionar Moto -->
     <div id="modal-add-motos" class="modal-overlay" onclick="fecharModalFora(event, 'modal-add-motos')">
         <div class="modal-content">
             <h3>Adicionar Moto</h3>
-            <input type="text" id="add-nome" placeholder="modelo da moto">
-            <input type="text" id="add-desc" placeholder="descrição">
+            <input type="text" id="add-nome" placeholder="Modelo da moto">
+            <input type="text" id="add-desc" placeholder="Descrição">
+            <div class="vincular-label">Vincular contatos</div>
+            <div class="chip-selector" id="add-moto-contatos"></div>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="fecharModal('modal-add-motos')">Cancelar</button>
                 <button class="btn-confirm" onclick="adicionarMoto()">Adicionar</button>
@@ -47,24 +58,28 @@
         </div>
     </div>
 
-    <div id="modal-edit" class="modal-overlay" onclick="fecharModalFora(event, 'modal-edit')">
+    <!-- Modal: Editar Moto -->
+    <div id="modal-edit-moto" class="modal-overlay" onclick="fecharModalFora(event, 'modal-edit-moto')">
         <div class="modal-content">
             <h3>Editar Moto</h3>
-            <input type="text" id="edit-nome" placeholder="modelo da moto">
-            <input type="text" id="edit-desc" placeholder="descrição">
+            <input type="text" id="edit-moto-nome" placeholder="Modelo da moto">
+            <input type="text" id="edit-moto-desc" placeholder="Descrição">
+            <div class="vincular-label">Contatos vinculados</div>
+            <div class="chip-selector" id="edit-moto-contatos"></div>
             <div class="modal-actions">
-                <button class="btn-cancel" onclick="fecharModal('modal-edit')">Cancelar</button>
+                <button class="btn-cancel" onclick="fecharModal('modal-edit-moto')">Cancelar</button>
                 <button class="btn-confirm" onclick="salvarEdicaoMoto()">Salvar Edição</button>
             </div>
         </div>
     </div>
 
-    <div id="modal-delete" class="modal-overlay" onclick="fecharModalFora(event, 'modal-delete')">
-        <div class="modal-content" style="width: auto;">
-            <h3 style="margin-bottom: 10px;">Deseja deletar mesmo?</h3>
+    <!-- Modal: Deletar Moto -->
+    <div id="modal-delete-moto" class="modal-overlay" onclick="fecharModalFora(event, 'modal-delete-moto')">
+        <div class="modal-content modal-confirm">
+            <h3>Deseja deletar mesmo?</h3>
             <div class="modal-actions">
                 <button class="btn-confirm" onclick="deletarMoto()">Sim</button>
-                <button class="btn-reject" onclick="fecharModal('modal-delete')">Não</button>
+                <button class="btn-reject" onclick="fecharModal('modal-delete-moto')">Não</button>
             </div>
         </div>
     </div>

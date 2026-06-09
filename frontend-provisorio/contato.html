@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Contatos - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html" class="nav-item">Home</a>
+        <a href="estoque.html" class="nav-item">Estoque</a>
+        <a href="moto.html" class="nav-item">Motos</a>
+        <a href="contato.html" class="nav-item active">Contatos</a>
+        <a href="vendas.html" class="nav-item">Vendas</a>
+        <a href="relatorios.html"    class="nav-item">Relatórios</a>
+        <a href="chats.html"         class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
+    </aside>
+
+    <main class="main-content">
+        <div class="estoque-header">
+            <h2>Contatos</h2>
+            <div class="estoque-controls">
+                <input type="text" id="filtro-contato" placeholder="Filtro nome, telefone ou e-mail">
+                <button class="btn-add" onclick="prepararAddContatoModal()">+</button>
+            </div>
+        </div>
+
+        <table class="item-list">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>E-mail</th>
+                    <th>Motos</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="lista-contatos"></tbody>
+        </table>
+    </main>
+
+    <!-- Modal: Adicionar Contato -->
+    <div id="modal-add-contato" class="modal-overlay" onclick="fecharModalFora(event, 'modal-add-contato')">
+        <div class="modal-content">
+            <h3>Adicionar Contato</h3>
+            <input type="text"  id="add-nome"     placeholder="Nome completo">
+            <input type="tel"   id="add-telefone" placeholder="Telefone">
+            <input type="email" id="add-email"    placeholder="E-mail">
+            <div class="vincular-label">Vincular motos</div>
+            <div class="chip-selector" id="add-contato-motos"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel"  onclick="fecharModal('modal-add-contato')">Cancelar</button>
+                <button class="btn-confirm" onclick="adicionarContato()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Contato -->
+    <div id="modal-edit-contato" class="modal-overlay" onclick="fecharModalFora(event, 'modal-edit-contato')">
+        <div class="modal-content">
+            <h3>Editar Contato</h3>
+            <input type="text"  id="edit-nome"     placeholder="Nome completo">
+            <input type="tel"   id="edit-telefone" placeholder="Telefone">
+            <input type="email" id="edit-email"    placeholder="E-mail">
+            <div class="vincular-label">Motos vinculadas</div>
+            <div class="chip-selector" id="edit-contato-motos"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel"  onclick="fecharModal('modal-edit-contato')">Cancelar</button>
+                <button class="btn-confirm" onclick="salvarEdicaoContato()">Salvar Edição</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Deletar Contato -->
+    <div id="modal-delete-contato" class="modal-overlay" onclick="fecharModalFora(event, 'modal-delete-contato')">
+        <div class="modal-content modal-confirm">
+            <h3>Deseja deletar mesmo?</h3>
+            <div class="modal-actions">
+                <button class="btn-confirm" onclick="deletarContato()">Sim</button>
+                <button class="btn-reject"  onclick="fecharModal('modal-delete-contato')">Não</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

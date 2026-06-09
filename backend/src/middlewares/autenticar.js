@@ -2,12 +2,14 @@ import jwt from 'jsonwebtoken';
 
 const autenticar = (req, res, next) => {
     const authHeader = req.headers['authorization'];
+    // Fallback para query param — usado pelo EventSource (SSE) que não suporta headers
+    const token = authHeader?.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : req.query.token;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
         return res.status(401).json({ error: 'Token não fornecido.' });
     }
-
-    const token = authHeader.split(' ')[1];
 
     try {
         const payload = jwt.verify(token, process.env.JWT_SECRET);

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurações - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html"           class="nav-item">Home</a>
+        <a href="estoque.html"        class="nav-item">Estoque</a>
+        <a href="moto.html"           class="nav-item">Motos</a>
+        <a href="contato.html"        class="nav-item">Contatos</a>
+        <a href="vendas.html"         class="nav-item">Vendas</a>
+        <a href="relatorios.html"     class="nav-item">Relatórios</a>
+        <a href="chats.html"          class="nav-item">Chats</a>
+        <a href="configuracoes.html"  class="nav-item active">Configurações</a>
+    </aside>
+
+    <main class="main-content">
+        <div class="estoque-header">
+            <h2>Configurações</h2>
+        </div>
+
+        <!-- ── Seção WhatsApp ── -->
+        <div class="config-card">
+            <div class="config-card-header">
+                <div class="config-card-icon" style="background:#dcfce7;color:#15803d">&#128241;</div>
+                <div>
+                    <div class="config-card-title">WhatsApp</div>
+                    <div class="config-card-sub">Conecte seu dispositivo para enviar e receber mensagens</div>
+                </div>
+                <div class="wa-badge" id="wa-badge">
+                    <span class="wa-badge-dot" id="wa-badge-dot"></span>
+                    <span id="wa-badge-label">Verificando...</span>
+                </div>
+            </div>
+
+            <!-- Opções -->
+            <div class="wa-opcoes">
+                <label class="toggle-row">
+                    <span class="toggle-label">
+                        <strong>Somente mensagens novas</strong>
+                        <small>Não exibe conversas anteriores ao conectar</small>
+                    </span>
+                    <div class="toggle-wrap">
+                        <input type="checkbox" id="toggle-novas" onchange="salvarOpcaoNovas(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Estado: desconectado -->
+            <div id="wa-desconectado" class="wa-section" style="display:none">
+                <p class="config-hint">Clique em Conectar para gerar o QR Code.</p>
+                <button class="btn-wa-conectar" id="btn-conectar" onclick="conectarWA()">Conectar WhatsApp</button>
+            </div>
+
+            <!-- Estado: QR code -->
+            <div id="wa-qr" class="wa-section" style="display:none">
+                <p class="config-hint">Abra o WhatsApp no seu celular &rarr; Aparelhos conectados &rarr; Conectar um aparelho &rarr; escaneie o QR abaixo.</p>
+                <div class="qr-box">
+                    <img id="qr-img" src="" alt="QR Code" class="qr-img">
+                    <div class="qr-loading" id="qr-loading">Gerando QR...</div>
+                </div>
+            </div>
+
+            <!-- Estado: conectado -->
+            <div id="wa-conectado" class="wa-section" style="display:none">
+                <div class="wa-connected-info">
+                    <div class="wa-connected-icon">&#10003;</div>
+                    <div>
+                        <div class="wa-connected-title">WhatsApp conectado!</div>
+                        <div class="wa-connected-sub">Você pode enviar e receber mensagens na aba Chats.</div>
+                    </div>
+                </div>
+                <div class="config-btn-row">
+                    <a href="chats.html" class="btn-wa-abrir">Abrir Chats</a>
+                    <button class="btn-wa-desconectar" onclick="desconectarWA()">Desconectar</button>
+                </div>
+            </div>
+
+            <!-- Estado: conectando -->
+            <div id="wa-conectando" class="wa-section" style="display:none">
+                <div class="wa-loading-row">
+                    <div class="spinner"></div>
+                    <span>Conectando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Seção Conta ── -->
+        <div class="config-card" style="margin-top: 20px;">
+            <div class="config-card-header">
+                <div class="config-card-icon" style="background:#e0e7ff;color:#4338ca">&#128100;</div>
+                <div>
+                    <div class="config-card-title">Minha conta</div>
+                    <div class="config-card-sub">Altere suas informações de perfil</div>
+                </div>
+            </div>
+            <div class="config-form">
+                <div class="config-field">
+                    <label>Nome</label>
+                    <input type="text" placeholder="Seu nome" id="conf-nome">
+                </div>
+                <div class="config-field">
+                    <label>E-mail</label>
+                    <input type="email" placeholder="seu@email.com" id="conf-email">
+                </div>
+                <div class="config-btn-row" style="margin-top:8px">
+                    <button class="btn-confirm" onclick="salvarConta()" style="max-width:160px">Salvar</button>
+                </div>
+                <p class="config-hint" id="conf-msg" style="display:none;color:#2d9e6b">Salvo com sucesso!</p>
+            </div>
+        </div>
+
+        <!-- ── Seção Senha ── -->
+        <div class="config-card" style="margin-top: 20px;">
+            <div class="config-card-header">
+                <div class="config-card-icon" style="background:#fce7f3;color:#be185d">&#128274;</div>
+                <div>
+                    <div class="config-card-title">Alterar senha</div>
+                    <div class="config-card-sub">Redefina a senha da sua conta</div>
+                </div>
+            </div>
+            <div class="config-form">
+                <div class="config-field">
+                    <label>Senha atual</label>
+                    <input type="password" placeholder="••••••••" id="conf-senha-atual">
+                </div>
+                <div class="config-field">
+                    <label>Nova senha</label>
+                    <input type="password" placeholder="••••••••" id="conf-senha-nova">
+                </div>
+                <div class="config-btn-row" style="margin-top:8px">
+                    <button class="btn-confirm" onclick="alert('Endpoint de senha ainda não implementado no backend.')" style="max-width:160px">Alterar senha</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Sair ── -->
+        <div class="config-card" style="margin-top: 20px; border-color: #fee2e2;">
+            <div class="config-card-header">
+                <div class="config-card-icon" style="background:#fee2e2;color:#dc2626">&#128682;</div>
+                <div>
+                    <div class="config-card-title" style="color:#dc2626">Sair da conta</div>
+                    <div class="config-card-sub">Encerra a sessão neste dispositivo</div>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="deslogar()">Sair</button>
+        </div>
+
+    </main>
+
+    <script>
+    const API   = 'http://localhost:3001/api';
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+
+    // ── SSE ──────────────────────────────────────────────────────────────────
+    const es = new EventSource(`${API}/whatsapp/sse?token=${token}`);
+
+    es.addEventListener('status', e => {
+        const { status, qr } = JSON.parse(e.data);
+        aplicarStatus(status);
+        if (status === 'qr' && qr) mostrarQR(qr);
+    });
+
+    es.addEventListener('qr', e => {
+        const { qr } = JSON.parse(e.data);
+        mostrarQR(qr);
+    });
+
+    // ── Estado WhatsApp ───────────────────────────────────────────────────────
+    function aplicarStatus(status) {
+        const secoes = ['desconectado','qr','conectado','conectando'];
+        secoes.forEach(s => document.getElementById(`wa-${s}`).style.display = 'none');
+
+        const map = {
+            disconnected: 'desconectado',
+            qr:           'qr',
+            connected:    'conectado',
+            connecting:   'conectando'
+        };
+        const secao = map[status] || 'desconectado';
+        document.getElementById(`wa-${secao}`).style.display = 'block';
+
+        // Badge
+        const dot   = document.getElementById('wa-badge-dot');
+        const label = document.getElementById('wa-badge-label');
+        const dotClass = { connected: 'dot-green', qr: 'dot-yellow', connecting: 'dot-yellow', disconnected: 'dot-red' };
+        const labels   = { connected: 'Conectado', qr: 'Aguardando QR', connecting: 'Conectando...', disconnected: 'Desconectado' };
+        dot.className   = 'wa-badge-dot ' + (dotClass[status] || 'dot-red');
+        label.textContent = labels[status] || 'Desconectado';
+    }
+
+    function mostrarQR(qr) {
+        const img     = document.getElementById('qr-img');
+        const loading = document.getElementById('qr-loading');
+        img.src       = qr;
+        img.style.display   = 'block';
+        loading.style.display = 'none';
+        document.getElementById('wa-qr').style.display = 'block';
+        document.getElementById('wa-desconectado').style.display = 'none';
+    }
+
+    // ── Ações WhatsApp ────────────────────────────────────────────────────────
+    async function conectarWA() {
+        document.getElementById('btn-conectar').disabled = true;
+        document.getElementById('qr-loading').style.display = 'block';
+        document.getElementById('qr-img').style.display     = 'none';
+
+        await fetch(`${API}/whatsapp/conectar`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+    }
+
+    async function desconectarWA() {
+        if (!confirm('Desconectar o WhatsApp?')) return;
+        await fetch(`${API}/whatsapp/desconectar`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+    }
+
+    // ── Logout ────────────────────────────────────────────────────────────────
+    function deslogar() {
+        if (!confirm('Deseja realmente sair?')) return;
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuarioLogado');
+        window.location.href = 'login.html';
+    }
+
+    // ── Opções WhatsApp ───────────────────────────────────────────────────────
+    async function carregarOpcoes() {
+        try {
+            const r = await fetch(`${API}/whatsapp/configuracao`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const cfg = await r.json();
+            document.getElementById('toggle-novas').checked = !!cfg.somenteMensagensNovas;
+        } catch {}
+    }
+
+    async function salvarOpcaoNovas(valor) {
+        await fetch(`${API}/whatsapp/configuracao`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ somenteMensagensNovas: valor })
+        });
+    }
+
+    // ── Conta ─────────────────────────────────────────────────────────────────
+    function salvarConta() {
+        // Backend ainda não tem endpoint para isso
+        document.getElementById('conf-msg').style.display = 'block';
+        setTimeout(() => document.getElementById('conf-msg').style.display = 'none', 3000);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    carregarOpcoes();
+    const usuarioSalvo = localStorage.getItem('usuarioLogado');
+    if (usuarioSalvo) {
+        const u = JSON.parse(usuarioSalvo);
+        document.getElementById('conf-nome').value  = u.usuario?.nomeUsuario  || '';
+        document.getElementById('conf-email').value = u.usuario?.emailUsuario || '';
+    }
+    </script>
+</body>
+</html>

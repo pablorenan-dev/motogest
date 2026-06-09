@@ -2,16 +2,23 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Motos - Motogest</title>
+    <title>Vendas - Motogest</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <aside class="sidebar">
-        <div class="logo-placeholder">M</div>
-        <a href="home.html" class="nav-item">- Home</a>
-        <a href="estoque.html" class="nav-item">- Estoque</a>
-        <a href="moto.html" class="nav-item">- Motos</a>
-        <a href="vendas.html" class="nav-item active">- Vendas</a>
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html" class="nav-item">Home</a>
+        <a href="estoque.html" class="nav-item">Estoque</a>
+        <a href="moto.html" class="nav-item">Motos</a>
+        <a href="contato.html" class="nav-item">Contatos</a>
+        <a href="vendas.html" class="nav-item active">Vendas</a>
+        <a href="relatorios.html"    class="nav-item">Relatórios</a>
+        <a href="chats.html"         class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
     </aside>
 
     <main class="main-content">
@@ -21,24 +28,33 @@
 
         <div class="venda-container">
             <div id="lista-pecas-alt"></div>
+
             <div class="cart">
-
-            <div class="cart-title">🛒 Carrinho</div>
-
-            <div id="cart-itens"></div>
-
-            <div class="total">
-                <div class="total-row">
-                    <span>Total: R$</span>
-                    <span id="total"></span>
+                <div class="cart-title">Carrinho</div>
+                <div id="cart-itens"></div>
+                <div class="total">
+                    <div class="total-row">
+                        <span>Total: R$</span>
+                        <span id="total">0.00</span>
+                    </div>
+                    <button class="checkout" onclick="finalizarVenda()">Finalizar Venda</button>
+                    <button class="clear" onclick="clearCart()">Limpar Carrinho</button>
                 </div>
-
-                <button class="checkout">Finalizar Venda</button>
-
-                <button class="clear" onclick="clearCart()">Limpar Carrinho</button>
             </div>
         </div>
     </main>
+
+    <!-- Modal de sucesso -->
+    <div id="modal-venda-sucesso" class="modal-overlay">
+        <div class="modal-content modal-sucesso">
+            <div class="sucesso-icone">✓</div>
+            <h3>Venda Finalizada!</h3>
+            <p class="sucesso-msg">Total da venda</p>
+            <p class="sucesso-total">R$ <span id="sucesso-total-valor">0.00</span></p>
+            <button class="btn-sucesso-fechar" onclick="fecharModal('modal-venda-sucesso')">Fechar</button>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

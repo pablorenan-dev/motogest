@@ -1,65 +1,58 @@
-// URL base do seu Back-end
 const API_URL = 'http://localhost:3001/api';
 
-// Retorna o token salvo no localStorage
-function getToken() {
-    return localStorage.getItem('token');
-}
+// Redireciona para login se não houver token (exceto na própria tela de login)
+(function() {
+    const page = window.location.pathname.split('/').pop() || 'index.html';
+    const publicPages = ['login.html', 'register.html'];
+    if (!publicPages.includes(page) && !localStorage.getItem('token')) {
+        window.location.replace('login.html');
+    }
+})();
 
-// Wrapper autenticado — adiciona o token em todo request e redireciona se expirar
+function getToken() { return localStorage.getItem('token'); }
+
 async function fetchAutenticado(url, opcoes = {}) {
     const token = getToken();
-
     const headers = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...(opcoes.headers || {})
     };
-
     const resposta = await fetch(url, { ...opcoes, headers });
-
     if (resposta.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('usuarioLogado');
         window.location.href = 'login.html';
         return;
     }
-
     return resposta;
 }
 
-// ================= LÓGICA DE LOGIN =================
-async function validarLogin(event) {
-    event.preventDefault(); // Evita recarregar a página
+// ================= LOGIN =================
 
+async function validarLogin(event) {
+    event.preventDefault();
     const emailInput = document.getElementById('login-email');
     const senhaInput = document.getElementById('login-senha');
-    const errorMsg = document.getElementById('error-msg');
-
+    const errorMsg   = document.getElementById('error-msg');
     if (!emailInput || !senhaInput) return;
-
     const email = emailInput.value;
     const senha = senhaInput.value;
-
-    if (email === "" || senha === "") {
+    if (!email || !senha) {
         errorMsg.style.display = "block";
         errorMsg.innerText = "Por favor, preencha e-mail e senha.";
         return;
     }
-
     try {
         const resposta = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ emailUsuario: email, senhaUsuario: senha })
         });
-
         if (resposta.ok) {
             const dados = await resposta.json();
-
             localStorage.setItem('token', dados.token);
             localStorage.setItem('usuarioLogado', JSON.stringify(dados));
-
             window.location.href = "home.html";
         } else if (resposta.status === 401) {
             errorMsg.style.display = "block";
@@ -69,202 +62,149 @@ async function validarLogin(event) {
             errorMsg.innerText = "Erro ao conectar com o servidor.";
         }
     } catch (erro) {
-        console.error("Erro de conexão:", erro);
         errorMsg.style.display = "block";
         errorMsg.innerText = "Erro ao conectar com o servidor. O Back-end está ligado?";
     }
 }
 
-// ================= LÓGICA DO ESTOQUE =================
+// ================= SEARCH PICKER =================
+// Seletor com busca em tempo real, substitui os chips para escalar bem
+
+function renderizarSearchPicker(containerId, items, idKey, nomeKey, selectedIds = []) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const selectedSet = new Set(selectedIds.map(String));
+
+    const itemsHtml = items.length === 0
+        ? '<div class="picker-empty">Nenhum cadastrado ainda.</div>'
+        : items.map(item => `
+            <div class="picker-item ${selectedSet.has(String(item[idKey])) ? 'active' : ''}" data-id="${item[idKey]}">
+                <div class="picker-checkbox">${selectedSet.has(String(item[idKey])) ? '✓' : ''}</div>
+                <span>${item[nomeKey]}</span>
+            </div>`).join('');
+
+    container.innerHTML = `
+        <div class="search-picker">
+            <input type="text" class="picker-search" placeholder="Buscar...">
+            <div class="picker-list">${itemsHtml}</div>
+            <div class="picker-footer">
+                <span class="picker-count">${selectedSet.size}</span> selecionado(s)
+            </div>
+        </div>`;
+
+    const input   = container.querySelector('.picker-search');
+    const list    = container.querySelector('.picker-list');
+    const countEl = container.querySelector('.picker-count');
+
+    // Filtro em tempo real
+    input.addEventListener('input', () => {
+        const q = input.value.toLowerCase();
+        list.querySelectorAll('.picker-item').forEach(el => {
+            el.style.display = el.querySelector('span').textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+
+    // Toggle seleção
+    list.addEventListener('click', e => {
+        const item = e.target.closest('.picker-item');
+        if (!item) return;
+        item.classList.toggle('active');
+        item.querySelector('.picker-checkbox').textContent = item.classList.contains('active') ? '✓' : '';
+        countEl.textContent = list.querySelectorAll('.picker-item.active').length;
+    });
+}
+
+function getSelectedFromPicker(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.picker-item.active')).map(el => el.dataset.id);
+}
+
+// ================= ESTOQUE =================
 
 let pecas = [];
 let pecaAtualId = null;
-const cart = [];
 
-// Busca as peças REAIS do banco de dados
 async function carregarEstoqueBanco() {
     const usuarioSalvo = localStorage.getItem('usuarioLogado');
-    if (!usuarioSalvo) return; // Se não tem ninguém logado, não faz nada
-
+    if (!usuarioSalvo) return;
     const usuario = JSON.parse(usuarioSalvo);
     const idOrganizacao = usuario.usuario.idOrganizacao;
-
     try {
         const resposta = await fetchAutenticado(`${API_URL}/produtos/${idOrganizacao}`);
-
         if (resposta && resposta.ok) {
             pecas = await resposta.json();
             renderizarEstoque();
         }
-    } catch (erro) {
-        console.error("Erro ao buscar as peças:", erro);
-    }
+    } catch (erro) { console.error("Erro ao buscar as peças:", erro); }
 }
 
-// Renderiza a lista na tela (agora usando os nomes do banco de dados)
-function renderizarEstoque() {
+function renderizarEstoque(data = pecas) {
     if (document.getElementById('lista-pecas') != null) {
         const lista = document.getElementById('lista-pecas');
         lista.innerHTML = "";
-
-        pecas.forEach(peca => {
+        data.forEach(peca => {
             const tr = document.createElement('tr');
             const eCritica = peca.quantidadeproduto !== null && peca.quantidademinimaproduto !== null
                 && peca.quantidadeproduto <= peca.quantidademinimaproduto;
-            tr.className = eCritica ? 'item-card item-card-critica ' : 'item-card td';
-
+            tr.className = eCritica ? 'item-card item-card-critica' : 'item-card';
             const tdProduto = document.createElement('td');
-            tdProduto.textContent = `${peca.nomeproduto}`;
+            tdProduto.textContent = peca.nomeproduto;
             const tdDescricao = document.createElement('td');
-            tdDescricao.textContent = `${peca.descricaoproduto}`;
+            tdDescricao.textContent = peca.descricaoproduto;
             const tdPreco = document.createElement('td');
             tdPreco.textContent = `R$ ${peca.precoproduto}`;
-
-            //...
+            const tdQtd = document.createElement('td');
+            tdQtd.textContent = peca.quantidadeproduto ?? '-';
             const tdActions = document.createElement('td');
             tdActions.className = 'item-actions';
-
             const btnDelete = document.createElement('button');
             btnDelete.className = 'btn-delete';
             btnDelete.textContent = '🗑️';
             btnDelete.addEventListener('click', () => abrirModalDeletar(peca.idproduto));
-
             const btnEdit = document.createElement('button');
             btnEdit.className = 'btn-edit';
             btnEdit.textContent = '✏️';
             btnEdit.addEventListener('click', () => abrirModalEditar(peca.idproduto));
-
             tdActions.appendChild(btnDelete);
             tdActions.appendChild(btnEdit);
             tr.appendChild(tdProduto);
             tr.appendChild(tdDescricao);
             tr.appendChild(tdPreco);
+            tr.appendChild(tdQtd);
             tr.appendChild(tdActions);
             lista.appendChild(tr);
         });
     } else if (document.getElementById('lista-pecas-alt') != null) {
         const lista = document.getElementById('lista-pecas-alt');
         lista.innerHTML = "";
-
-        pecas.forEach(peca => {
+        data.forEach(peca => {
             const div = document.createElement('div');
             div.className = 'product-card';
-
-            div.innerHTML = `<div class="product-info">
-                                <div class="product-name">${peca.nomeproduto}</div>
-                                <div class="price">R$ ${peca.precoproduto}</div>
-                            </div>
-                            <div class="stock">${peca.quantidadeproduto}</div>`;
-
-            div.addEventListener('click', () => {
-                addToCart(peca.idproduto);
-            });
-
+            div.innerHTML = `
+                <div class="product-info">
+                    <div class="product-name">${peca.nomeproduto}</div>
+                    <div class="price">R$ ${peca.precoproduto}</div>
+                </div>
+                <div class="stock">${peca.quantidadeproduto} un.</div>`;
+            div.addEventListener('click', () => addToCart(peca.idproduto));
             lista.appendChild(div);
         });
         renderCart();
     }
 }
 
-function addToCart(id) {
-    const produtos = pecas.find(p => p.idproduto === id);
-    const existe = cart.find(item => item.idproduto === id);
-
-    if (existe) {
-        if (existe.quantidade < produtos.quantidadeproduto) {
-            existe.quantidade++;
-        } else {
-            alert("Estoque insuficiente.");
-            return;
-        }
-    } else {
-        cart.push({
-            ...produtos,
-            quantidade: 1
-        });
-    }
-
-    renderCart();
-}
-
-function changeQty(id, delta) {
-    const item = cart.find(p => p.idproduto === id);
-
-    if (!item) return;
-
-    const produto = pecas.find(p => p.idproduto === id);
-    if (delta > 0 && item.quantidade >= produto.quantidadeproduto) {
-        alert("Estoque insuficiente.");
-        return;
-    }
-
-    //...
-    item.quantidade += delta;
-
-    if (item.quantidade <= 0) {
-        const index = cart.findIndex(p => p.idproduto === id);
-        cart.splice(index, 1);
-    }
-
-    renderCart();
-}
-
-function renderCart() {
-    const cartItems = document.getElementById("cart-itens");
-
-    cartItems.innerHTML = cart.map(item => `
-        <div class="cart-item">
-            <strong>${item.nomeproduto}</strong>
-
-            <div class="qty-controls">
-                <button onclick="changeQty('${item.idproduto}', -1)">-</button>
-
-                <span>${item.quantidade}</span>
-
-                <button onclick="changeQty('${item.idproduto}', 1)">+</button>
-            </div>
-        </div>
-    `).join("");
-
-    const total = cart.reduce(
-        (sum, item) => sum + item.precoproduto * item.quantidade,
-        0
-    );
-
-    document.getElementById("total").textContent =
-        total.toFixed(2);
-}
-
-function clearCart() {
-    cart.length = 0;
-    renderCart();
-}
-
-// ================= FUNÇÃO PARA ADICIONAR PEÇA =================
 async function adicionarPeca() {
-    // 1. Pega o que foi digitado nos campos
-    const nome = document.getElementById('add-nome').value;
-    const desc = document.getElementById('add-desc').value;
-    const preco = document.getElementById('add-preco').value;
-
-    // 2. Verifica se algum campo está vazio
-    if (!nome || !desc || !preco) {
-        alert("Por favor, preencha todos os campos.");
-        return;
-    }
-
-    // 3. Pega o ID da organização de quem está logado
+    const nome       = document.getElementById('add-nome').value;
+    const desc       = document.getElementById('add-desc').value;
+    const preco      = document.getElementById('add-preco').value;
+    const quantidade = document.getElementById('add-quantidade').value;
+    const qtdMin     = document.getElementById('add-qtd-min').value;
+    if (!nome || !desc || !preco) { alert("Preencha nome, descrição e preço."); return; }
     const usuarioSalvo = localStorage.getItem('usuarioLogado');
-    if (!usuarioSalvo) {
-        alert("Você precisa estar logado para adicionar peças.");
-        return;
-    }
-
-    // Ajuste para lidar com a estrutura do seu login
+    if (!usuarioSalvo) return;
     const dados = JSON.parse(usuarioSalvo);
-    const idOrganizacao = dados.usuario.idOrganizacao;
-
-    // 4. "Telefona" para o Back-end mandando salvar
     try {
         const resposta = await fetchAutenticado(`${API_URL}/produtos`, {
             method: 'POST',
@@ -272,105 +212,134 @@ async function adicionarPeca() {
                 nomeProduto: nome,
                 descricaoProduto: desc,
                 precoProduto: parseFloat(preco),
-                idOrganizacao: idOrganizacao
+                quantidadeProduto: parseInt(quantidade) || 0,
+                quantidadeMinimaProduto: parseInt(qtdMin) || 0,
+                idOrganizacao: dados.usuario.idOrganizacao
             })
         });
-
         if (resposta && resposta.ok) {
-            // Se deu certo: fecha a janela, limpa os campos e recarrega a lista
             fecharModal('modal-add');
-            document.getElementById('add-nome').value = '';
-            document.getElementById('add-desc').value = '';
-            document.getElementById('add-preco').value = '';
-
-            carregarEstoqueBanco(); // Atualiza a tela com o novo item
-        } else {
-            alert("Erro ao salvar a peça no banco de dados.");
-        }
-    } catch (erro) {
-        console.error("Erro ao adicionar:", erro);
-        alert("Erro de conexão. O Back-end está rodando?");
-    }
+            ['add-nome','add-desc','add-preco','add-quantidade','add-qtd-min'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            carregarEstoqueBanco();
+        } else { alert("Erro ao salvar a peça."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
 }
-
-// ================= FUNÇÕES DE EDITAR PEÇA =================
 
 function abrirModalEditar(id) {
     pecaAtualId = id;
     const peca = pecas.find(p => p.idproduto === id);
     if (!peca) return;
-
-    document.getElementById('edit-nome').value = peca.nomeproduto || '';
-    document.getElementById('edit-desc').value = peca.descricaoproduto || '';
-    document.getElementById('edit-preco').value = peca.precoproduto || '';
-    document.getElementById('edit-quantidade').value = peca.quantidadeproduto || '';
-    document.getElementById('edit-qtd-min').value = peca.quantidademinimaproduto || '';
-
+    document.getElementById('edit-nome').value      = peca.nomeproduto     || '';
+    document.getElementById('edit-desc').value      = peca.descricaoproduto|| '';
+    document.getElementById('edit-preco').value     = peca.precoproduto    || '';
+    document.getElementById('edit-quantidade').value= peca.quantidadeproduto     || '';
+    document.getElementById('edit-qtd-min').value   = peca.quantidademinimaproduto || '';
     abrirModal('modal-edit');
 }
 
 async function salvarEdicao() {
-    const nome = document.getElementById('edit-nome').value;
-    const desc = document.getElementById('edit-desc').value;
-    const preco = document.getElementById('edit-preco').value;
-    const quantidade = document.getElementById('edit-quantidade').value;
-    const qtdMin = document.getElementById('edit-qtd-min').value;
-
-    if (!nome || !desc || !preco) {
-        alert("Por favor, preencha os campos obrigatórios.");
-        return;
-    }
-
+    const nome      = document.getElementById('edit-nome').value;
+    const desc      = document.getElementById('edit-desc').value;
+    const preco     = document.getElementById('edit-preco').value;
+    const quantidade= document.getElementById('edit-quantidade').value;
+    const qtdMin    = document.getElementById('edit-qtd-min').value;
+    if (!nome || !desc || !preco) { alert("Preencha os campos obrigatórios."); return; }
     try {
         const resposta = await fetchAutenticado(`${API_URL}/produtos/${pecaAtualId}`, {
             method: 'PUT',
             body: JSON.stringify({
-                nomeProduto: nome,
-                descricaoProduto: desc,
-                precoProduto: parseFloat(preco),
-                quantidadeProduto: parseInt(quantidade) || 0,
-                quantidadeMinimaProduto: parseInt(qtdMin) || 0
+                nomeProduto: nome, descricaoProduto: desc, precoProduto: parseFloat(preco),
+                quantidadeProduto: parseInt(quantidade) || 0, quantidadeMinimaProduto: parseInt(qtdMin) || 0
             })
         });
-
-        if (resposta && resposta.ok) {
-            fecharModal('modal-edit');
-            carregarEstoqueBanco();
-        } else {
-            alert("Erro ao atualizar a peça.");
-        }
-    } catch (erro) {
-        console.error("Erro ao editar:", erro);
-        alert("Erro de conexão. O Back-end está rodando?");
-    }
+        if (resposta && resposta.ok) { fecharModal('modal-edit'); carregarEstoqueBanco(); }
+        else { alert("Erro ao atualizar a peça."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
 }
 
-// ================= FUNÇÕES DE DELETAR PEÇA =================
-
-function abrirModalDeletar(id) {
-    pecaAtualId = id;
-    abrirModal('modal-delete');
-}
+function abrirModalDeletar(id) { pecaAtualId = id; abrirModal('modal-delete'); }
 
 async function deletarPeca() {
     try {
-        const resposta = await fetchAutenticado(`${API_URL}/produtos/${pecaAtualId}`, {
-            method: 'DELETE'
-        });
-
-        if (resposta && resposta.ok) {
-            fecharModal('modal-delete');
-            carregarEstoqueBanco();
-        } else {
-            alert("Erro ao deletar a peça.");
-        }
-    } catch (erro) {
-        console.error("Erro ao deletar:", erro);
-        alert("Erro de conexão. O Back-end está rodando?");
-    }
+        const resposta = await fetchAutenticado(`${API_URL}/produtos/${pecaAtualId}`, { method: 'DELETE' });
+        if (resposta && resposta.ok) { fecharModal('modal-delete'); carregarEstoqueBanco(); }
+        else { alert("Erro ao deletar a peça."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
 }
 
-// ================= LÓGICA DE MOTOS =================
+// ================= CARRINHO / VENDAS =================
+
+const cart = [];
+
+function addToCart(id) {
+    const produto = pecas.find(p => p.idproduto === id);
+    const existe  = cart.find(item => item.idproduto === id);
+    if (existe) {
+        if (existe.quantidade < produto.quantidadeproduto) { existe.quantidade++; }
+        else { alert("Estoque insuficiente."); return; }
+    } else { cart.push({ ...produto, quantidade: 1 }); }
+    renderCart();
+}
+
+function changeQty(id, delta) {
+    const item    = cart.find(p => p.idproduto === id);
+    if (!item) return;
+    const produto = pecas.find(p => p.idproduto === id);
+    if (delta > 0 && item.quantidade >= produto.quantidadeproduto) { alert("Estoque insuficiente."); return; }
+    item.quantidade += delta;
+    if (item.quantidade <= 0) cart.splice(cart.findIndex(p => p.idproduto === id), 1);
+    renderCart();
+}
+
+function renderCart() {
+    const cartItems = document.getElementById("cart-itens");
+    if (!cartItems) return;
+    cartItems.innerHTML = cart.map(item => `
+        <div class="cart-item">
+            <strong>${item.nomeproduto}</strong>
+            <div class="qty-controls">
+                <button onclick="changeQty('${item.idproduto}', -1)">-</button>
+                <span>${item.quantidade}</span>
+                <button onclick="changeQty('${item.idproduto}', 1)">+</button>
+            </div>
+        </div>`).join("");
+    const total = cart.reduce((sum, item) => sum + item.precoproduto * item.quantidade, 0);
+    document.getElementById("total").textContent = total.toFixed(2);
+}
+
+function clearCart() { cart.length = 0; renderCart(); }
+
+async function finalizarVenda() {
+    if (cart.length === 0) { alert("Adicione pelo menos um produto ao carrinho."); return; }
+    const usuarioSalvo = localStorage.getItem('usuarioLogado');
+    if (!usuarioSalvo) return;
+    const dados = JSON.parse(usuarioSalvo);
+    const itens = cart.map(item => ({
+        idProduto: item.idproduto,
+        quantidade: item.quantidade,
+        precoUnitario: item.precoproduto
+    }));
+    try {
+        const resposta = await fetchAutenticado(`${API_URL}/vendas`, {
+            method: 'POST',
+            body: JSON.stringify({ idOrganizacao: dados.usuario.idOrganizacao, itens })
+        });
+        if (resposta && resposta.ok) {
+            const resultado = await resposta.json();
+            document.getElementById('sucesso-total-valor').textContent = Number(resultado.valortotal).toFixed(2);
+            abrirModal('modal-venda-sucesso');
+            clearCart();
+            carregarEstoqueBanco();
+        } else {
+            const erro = await resposta.json();
+            alert(erro.error || "Erro ao finalizar a venda.");
+        }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+}
+
+// ================= MOTOS =================
 
 let motos = [];
 let motoAtualId = null;
@@ -378,197 +347,455 @@ let motoAtualId = null;
 async function carregarMotosBanco() {
     const usuarioSalvo = localStorage.getItem('usuarioLogado');
     if (!usuarioSalvo) return;
-
     const usuario = JSON.parse(usuarioSalvo);
     const idOrganizacao = usuario.usuario.idOrganizacao;
-
     try {
-        const resposta = await fetchAutenticado(
-            `${API_URL}/motos/${idOrganizacao}`
-        );
-
+        const resposta = await fetchAutenticado(`${API_URL}/motos/${idOrganizacao}`);
         if (resposta && resposta.ok) {
             motos = await resposta.json();
-            console.log("MOTOS: ", motos);
             renderizarMotos();
         }
-    } catch (erro) {
-        console.error("Erro ao buscar motos:", erro);
-    }
+    } catch (erro) { console.error("Erro ao buscar motos:", erro); }
 }
 
-function renderizarMotos() {
+function renderizarMotos(data = motos) {
     const lista = document.getElementById('lista-motos');
     if (!lista) return;
-
     lista.innerHTML = '';
-
-    motos.forEach(moto => {
+    data.forEach(moto => {
         const tr = document.createElement('tr');
         tr.className = 'item-card';
-
-        const tdModelo = document.createElement('td');
+        const tdModelo    = document.createElement('td');
         tdModelo.textContent = moto.nomemoto;
-
         const tdDescricao = document.createElement('td');
         tdDescricao.textContent = moto.descricaomoto;
-
+        const tdContatos  = document.createElement('td');
+        const contatosVinculados = contatos.filter(c => c.motos.some(m => String(m.idmoto) === String(moto.idmoto)));
+        tdContatos.innerHTML = contatosVinculados.length > 0
+            ? contatosVinculados.map(c => `<span class="tag-moto">${c.nomecontato}</span>`).join('')
+            : '<span class="sem-vinculo">-</span>';
         const tdActions = document.createElement('td');
         tdActions.className = 'item-actions';
-
         const btnDelete = document.createElement('button');
         btnDelete.className = 'btn-delete';
         btnDelete.textContent = '🗑️';
         btnDelete.onclick = () => abrirModalDeletarMoto(moto.idmoto);
-
         const btnEdit = document.createElement('button');
         btnEdit.className = 'btn-edit';
         btnEdit.textContent = '✏️';
         btnEdit.onclick = () => abrirModalEditarMoto(moto.idmoto);
-
         tdActions.appendChild(btnDelete);
         tdActions.appendChild(btnEdit);
-
         tr.appendChild(tdModelo);
         tr.appendChild(tdDescricao);
+        tr.appendChild(tdContatos);
         tr.appendChild(tdActions);
-
         lista.appendChild(tr);
     });
 }
 
+function prepararAddMotoModal() {
+    renderizarSearchPicker('add-moto-contatos', contatos, 'idcontato', 'nomecontato');
+    abrirModal('modal-add-motos');
+}
+
 async function adicionarMoto() {
-    const modelo = document.getElementById('add-nome').value;
-    const descricao = document.getElementById('add-desc').value;
-
-    if (!modelo || !descricao) {
-        alert("Por favor, preencha todos os campos.");
-        return;
-    }
-
-    // 3. Pega o ID da organização de quem está logado
+    const modelo   = document.getElementById('add-nome').value;
+    const descricao= document.getElementById('add-desc').value;
+    if (!modelo || !descricao) { alert("Preencha todos os campos."); return; }
     const usuarioSalvo = localStorage.getItem('usuarioLogado');
-    if (!usuarioSalvo) {
-        alert("Você precisa estar logado para adicionar motos.");
-        return;
-    }
-
+    if (!usuarioSalvo) return;
     const dados = JSON.parse(usuarioSalvo);
-    const idOrganizacao = dados.usuario.idOrganizacao;
-
     try {
-        const resposta = await fetchAutenticado(`${API_URL}/motos`,
-            {
-                method: 'POST',
-                body: JSON.stringify({
-                    nomeMoto: modelo,
-                    descricaoMoto: descricao,
-                    idOrganizacao: idOrganizacao
-                })
-            }
-        );
-
+        const resposta = await fetchAutenticado(`${API_URL}/motos`, {
+            method: 'POST',
+            body: JSON.stringify({ nomeMoto: modelo, descricaoMoto: descricao, idOrganizacao: dados.usuario.idOrganizacao })
+        });
         if (resposta && resposta.ok) {
+            const resultado = await resposta.json();
+            const idMoto = resultado.moto.idmoto;
+            const idsContatosSelecionados = getSelectedFromPicker('add-moto-contatos');
+            await Promise.all(idsContatosSelecionados.map(id => vincularContatoMoto(id, idMoto)));
             fecharModal('modal-add-motos');
             document.getElementById('add-nome').value = '';
             document.getElementById('add-desc').value = '';
-
-            carregarMotosBanco();
-        } else {
-            alert("Erro ao salvar a moto no banco de dados.");
-        }
-    } catch (erro) {
-        console.error("Erro ao adicionar:", erro);
-        alert("Erro de conexão. O Back-end está rodando?");
-    }
+            await Promise.all([carregarMotosBanco(), carregarContatosBanco()]);
+        } else { alert("Erro ao salvar a moto."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
 }
 
 function abrirModalEditarMoto(id) {
     motoAtualId = id;
-
     const moto = motos.find(m => m.idmoto === id);
     if (!moto) return;
-
-    document.getElementById('edit-nome').value = moto.nomemoto || '';
-    document.getElementById('edit-desc').value = moto.descricaomoto || '';
-
-    abrirModal('modal-edit');
+    document.getElementById('edit-moto-nome').value = moto.nomemoto    || '';
+    document.getElementById('edit-moto-desc').value = moto.descricaomoto || '';
+    const contatosVinculados = contatos
+        .filter(c => c.motos.some(m => String(m.idmoto) === String(id)))
+        .map(c => String(c.idcontato));
+    renderizarSearchPicker('edit-moto-contatos', contatos, 'idcontato', 'nomecontato', contatosVinculados);
+    abrirModal('modal-edit-moto');
 }
 
 async function salvarEdicaoMoto() {
-    const nome = document.getElementById('edit-nome').value;
-    const desc = document.getElementById('edit-desc').value;
-
-    if (!nome) {
-        alert("Por favor, preencha o nome da moto.");
-        return;
-    }
-
+    const nome = document.getElementById('edit-moto-nome').value;
+    const desc = document.getElementById('edit-moto-desc').value;
+    if (!nome) { alert("Preencha o nome da moto."); return; }
     try {
-        const resposta = await fetchAutenticado(
-            `${API_URL}/motos/${motoAtualId}`,
-            {
-                method: 'PUT',
-                body: JSON.stringify({
-                    nomeMoto: nome,
-                    descricaoMoto: desc
-                })
-            }
-        );
-
+        const resposta = await fetchAutenticado(`${API_URL}/motos/${motoAtualId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ nomeMoto: nome, descricaoMoto: desc })
+        });
         if (resposta && resposta.ok) {
-            fecharModal('modal-edit');
-            carregarMotosBanco();
-        } else {
-            alert("Erro ao atualizar a moto.");
-        }
-    } catch (erro) {
-        console.error("Erro ao editar:", erro);
-        alert("Erro de conexão. O Back-end está rodando?");
-    }
+            await sincronizarContatosDaMoto(motoAtualId, getSelectedFromPicker('edit-moto-contatos'));
+            fecharModal('modal-edit-moto');
+            await Promise.all([carregarMotosBanco(), carregarContatosBanco()]);
+        } else { alert("Erro ao atualizar a moto."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
 }
 
-function abrirModalDeletarMoto(id) {
-    motoAtualId = id;
-    abrirModal('modal-delete');
-}
+function abrirModalDeletarMoto(id) { motoAtualId = id; abrirModal('modal-delete-moto'); }
 
 async function deletarMoto() {
     try {
-        const resposta = await fetchAutenticado(
-            `${API_URL}/motos/${motoAtualId}`,
-            {
-                method: 'DELETE'
-            }
-        );
+        const resposta = await fetchAutenticado(`${API_URL}/motos/${motoAtualId}`, { method: 'DELETE' });
+        if (resposta && resposta.ok) { fecharModal('modal-delete-moto'); carregarMotosBanco(); }
+        else { alert("Erro ao deletar a moto."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+}
 
+// ================= CONTATOS =================
+
+let contatos = [];
+let contatoAtualId = null;
+
+async function carregarContatosBanco() {
+    const usuarioSalvo = localStorage.getItem('usuarioLogado');
+    if (!usuarioSalvo) return;
+    const usuario = JSON.parse(usuarioSalvo);
+    const idOrganizacao = usuario.usuario.idOrganizacao;
+    try {
+        const resposta = await fetchAutenticado(`${API_URL}/contatos/${idOrganizacao}`);
         if (resposta && resposta.ok) {
-            fecharModal('modal-delete');
-            carregarMotosBanco();
-        } else {
-            alert("Erro ao deletar a moto.");
+            contatos = await resposta.json();
+            if (document.getElementById('lista-contatos')) renderizarContatos();
+            if (document.getElementById('lista-motos'))    renderizarMotos();
         }
-    } catch (erro) {
-        console.error("Erro ao deletar:", erro);
-        alert("Erro de conexão. O Back-end está rodando?");
+    } catch (erro) { console.error("Erro ao buscar contatos:", erro); }
+}
+
+function renderizarContatos(data = contatos) {
+    const lista = document.getElementById('lista-contatos');
+    if (!lista) return;
+    lista.innerHTML = '';
+    data.forEach(contato => {
+        const tr = document.createElement('tr');
+        tr.className = 'item-card';
+        const tdNome  = document.createElement('td');
+        tdNome.textContent = contato.nomecontato;
+        const tdTel   = document.createElement('td');
+        tdTel.textContent  = contato.telefonecontato || '-';
+        const tdEmail = document.createElement('td');
+        tdEmail.textContent= contato.emailcontato   || '-';
+        const tdMotos = document.createElement('td');
+        tdMotos.innerHTML  = contato.motos.length > 0
+            ? contato.motos.map(m => `<span class="tag-moto">${m.nomemoto}</span>`).join('')
+            : '<span class="sem-vinculo">-</span>';
+        const tdActions = document.createElement('td');
+        tdActions.className = 'item-actions';
+        const btnEdit = document.createElement('button');
+        btnEdit.className = 'btn-edit';
+        btnEdit.textContent = '✏️';
+        btnEdit.onclick = () => abrirModalEditarContato(contato.idcontato);
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'btn-delete';
+        btnDelete.textContent = '🗑️';
+        btnDelete.onclick = () => abrirModalDeletarContato(contato.idcontato);
+        tdActions.appendChild(btnEdit);
+        tdActions.appendChild(btnDelete);
+        tr.appendChild(tdNome);
+        tr.appendChild(tdTel);
+        tr.appendChild(tdEmail);
+        tr.appendChild(tdMotos);
+        tr.appendChild(tdActions);
+        lista.appendChild(tr);
+    });
+}
+
+function prepararAddContatoModal() {
+    renderizarSearchPicker('add-contato-motos', motos, 'idmoto', 'nomemoto');
+    abrirModal('modal-add-contato');
+}
+
+async function adicionarContato() {
+    const nome     = document.getElementById('add-nome').value;
+    const telefone = document.getElementById('add-telefone').value;
+    const email    = document.getElementById('add-email').value;
+    if (!nome) { alert("Nome é obrigatório."); return; }
+    const usuarioSalvo = localStorage.getItem('usuarioLogado');
+    if (!usuarioSalvo) return;
+    const dados = JSON.parse(usuarioSalvo);
+    try {
+        const resposta = await fetchAutenticado(`${API_URL}/contatos`, {
+            method: 'POST',
+            body: JSON.stringify({ nomeContato: nome, telefoneContato: telefone, emailContato: email, idOrganizacao: dados.usuario.idOrganizacao })
+        });
+        if (resposta && resposta.ok) {
+            const resultado = await resposta.json();
+            const idContato = resultado.contato.idcontato;
+            const idsMotosSelecionadas = getSelectedFromPicker('add-contato-motos');
+            await Promise.all(idsMotosSelecionadas.map(id => vincularContatoMoto(idContato, id)));
+            fecharModal('modal-add-contato');
+            ['add-nome','add-telefone','add-email'].forEach(id => document.getElementById(id).value = '');
+            await carregarContatosBanco();
+        } else { alert("Erro ao salvar o contato."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+}
+
+function abrirModalEditarContato(id) {
+    contatoAtualId = id;
+    const contato = contatos.find(c => c.idcontato === id);
+    if (!contato) return;
+    document.getElementById('edit-nome').value     = contato.nomecontato    || '';
+    document.getElementById('edit-telefone').value = contato.telefonecontato|| '';
+    document.getElementById('edit-email').value    = contato.emailcontato   || '';
+    const motosVinculadas = contato.motos.map(m => String(m.idmoto));
+    renderizarSearchPicker('edit-contato-motos', motos, 'idmoto', 'nomemoto', motosVinculadas);
+    abrirModal('modal-edit-contato');
+}
+
+async function salvarEdicaoContato() {
+    const nome     = document.getElementById('edit-nome').value;
+    const telefone = document.getElementById('edit-telefone').value;
+    const email    = document.getElementById('edit-email').value;
+    if (!nome) { alert("Nome é obrigatório."); return; }
+    try {
+        const resposta = await fetchAutenticado(`${API_URL}/contatos/${contatoAtualId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ nomeContato: nome, telefoneContato: telefone, emailContato: email })
+        });
+        if (resposta && resposta.ok) {
+            await sincronizarMotosDosContato(contatoAtualId, getSelectedFromPicker('edit-contato-motos'));
+            fecharModal('modal-edit-contato');
+            await carregarContatosBanco();
+        } else { alert("Erro ao atualizar o contato."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+}
+
+function abrirModalDeletarContato(id) { contatoAtualId = id; abrirModal('modal-delete-contato'); }
+
+async function deletarContato() {
+    try {
+        const resposta = await fetchAutenticado(`${API_URL}/contatos/${contatoAtualId}`, { method: 'DELETE' });
+        if (resposta && resposta.ok) { fecharModal('modal-delete-contato'); await carregarContatosBanco(); }
+        else { alert("Erro ao deletar o contato."); }
+    } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+}
+
+// ================= VINCULAR / DESVINCULAR =================
+
+async function vincularContatoMoto(idContato, idMoto) {
+    return fetchAutenticado(`${API_URL}/contatos/${idContato}/motos/${idMoto}`, { method: 'POST' });
+}
+async function desvincularContatoMoto(idContato, idMoto) {
+    return fetchAutenticado(`${API_URL}/contatos/${idContato}/motos/${idMoto}`, { method: 'DELETE' });
+}
+
+async function sincronizarContatosDaMoto(idMoto, idsContatosSelecionados) {
+    const atualmenteVinculados = contatos
+        .filter(c => c.motos.some(m => String(m.idmoto) === String(idMoto)))
+        .map(c => String(c.idcontato));
+    const adicionar = idsContatosSelecionados.filter(id => !atualmenteVinculados.includes(id));
+    const remover   = atualmenteVinculados.filter(id => !idsContatosSelecionados.includes(id));
+    await Promise.all([
+        ...adicionar.map(id => vincularContatoMoto(id, idMoto)),
+        ...remover.map(id   => desvincularContatoMoto(id, idMoto))
+    ]);
+}
+
+async function sincronizarMotosDosContato(idContato, idsMotosSelecionadas) {
+    const contato = contatos.find(c => String(c.idcontato) === String(idContato));
+    const atualmenteVinculadas = contato ? contato.motos.map(m => String(m.idmoto)) : [];
+    const adicionar = idsMotosSelecionadas.filter(id => !atualmenteVinculadas.includes(id));
+    const remover   = atualmenteVinculadas.filter(id => !idsMotosSelecionadas.includes(id));
+    await Promise.all([
+        ...adicionar.map(id => vincularContatoMoto(idContato, id)),
+        ...remover.map(id   => desvincularContatoMoto(idContato, id))
+    ]);
+}
+
+// ================= RELATÓRIOS =================
+
+let vendas = [];
+let grafico = null;
+
+async function carregarVendasBanco() {
+    const usuarioSalvo = localStorage.getItem('usuarioLogado');
+    if (!usuarioSalvo) return;
+    const usuario = JSON.parse(usuarioSalvo);
+    const idOrganizacao = usuario.usuario.idOrganizacao;
+    try {
+        const resposta = await fetchAutenticado(`${API_URL}/vendas/${idOrganizacao}`);
+        if (resposta && resposta.ok) {
+            vendas = await resposta.json();
+            renderizarRelatorios(vendas);
+        }
+    } catch (erro) { console.error("Erro ao buscar vendas:", erro); }
+}
+
+function filtrarVendas() {
+    const dataInicio = document.getElementById('filtro-inicio').value;
+    const dataFim    = document.getElementById('filtro-fim').value;
+    let filtradas = [...vendas];
+    if (dataInicio) filtradas = filtradas.filter(v => new Date(v.datavenda) >= new Date(dataInicio));
+    if (dataFim)    filtradas = filtradas.filter(v => new Date(v.datavenda) <= new Date(dataFim + 'T23:59:59'));
+    renderizarRelatorios(filtradas);
+}
+
+function limparFiltros() {
+    document.getElementById('filtro-inicio').value = '';
+    document.getElementById('filtro-fim').value    = '';
+    renderizarRelatorios(vendas);
+}
+
+function renderizarRelatorios(dados) {
+    renderizarTabelaVendas(dados);
+    renderizarGrafico(dados);
+    atualizarResumo(dados);
+}
+
+function atualizarResumo(dados) {
+    const totalGeral = dados.reduce((s, v) => s + Number(v.valortotal), 0);
+    const elTotal = document.getElementById('resumo-total');
+    const elQtd   = document.getElementById('resumo-qtd');
+    if (elTotal) elTotal.textContent = `R$ ${totalGeral.toFixed(2)}`;
+    if (elQtd)   elQtd.textContent   = dados.length;
+}
+
+function renderizarTabelaVendas(dados) {
+    const tbody = document.getElementById('lista-vendas');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (dados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-row">Nenhuma venda encontrada.</td></tr>';
+        return;
+    }
+    dados.forEach(venda => {
+        const tr = document.createElement('tr');
+        tr.className = 'item-card';
+        const data = new Date(venda.datavenda).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        const nomesItens = venda.itens.length > 0
+            ? venda.itens.map(i => `${i.nomeproduto} (${i.quantidade}x)`).join(', ')
+            : '-';
+        const tdData  = document.createElement('td');
+        tdData.textContent = data;
+        const tdItens = document.createElement('td');
+        tdItens.textContent = nomesItens;
+        tdItens.className   = 'td-itens';
+        const tdTotal = document.createElement('td');
+        tdTotal.textContent = `R$ ${Number(venda.valortotal).toFixed(2)}`;
+        tdTotal.style.fontWeight = 'bold';
+        tr.appendChild(tdData);
+        tr.appendChild(tdItens);
+        tr.appendChild(tdTotal);
+        tbody.appendChild(tr);
+    });
+}
+
+function renderizarGrafico(dados) {
+    const ctx = document.getElementById('grafico-vendas');
+    if (!ctx) return;
+    const porDia = {};
+    dados.forEach(v => {
+        const dia = new Date(v.datavenda).toLocaleDateString('pt-BR');
+        porDia[dia] = (porDia[dia] || 0) + Number(v.valortotal);
+    });
+    const labels = Object.keys(porDia).sort((a, b) => {
+        const [da, ma, ya] = a.split('/').map(Number);
+        const [db, mb, yb] = b.split('/').map(Number);
+        return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
+    });
+    if (grafico) grafico.destroy();
+    grafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{ label: 'Receita (R$)', data: labels.map(d => porDia[d]),
+                backgroundColor: '#a8e6cf', borderColor: '#333', borderWidth: 1, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => `R$ ${ctx.parsed.y.toFixed(2)}` } }
+            },
+            scales: { y: { beginAtZero: true, ticks: { callback: val => `R$ ${val.toFixed(0)}` } } }
+        }
+    });
+}
+
+// ================= FILTROS DAS TELAS =================
+
+function setupFiltros() {
+    // Estoque
+    const filtroPeca = document.getElementById('filtro-peca');
+    if (filtroPeca) {
+        filtroPeca.addEventListener('input', () => {
+            const q = filtroPeca.value.toLowerCase();
+            renderizarEstoque(pecas.filter(p =>
+                p.nomeproduto.toLowerCase().includes(q) ||
+                (p.descricaoproduto || '').toLowerCase().includes(q)
+            ));
+        });
+    }
+    // Motos
+    const filtroMoto = document.getElementById('filtro-moto');
+    if (filtroMoto) {
+        filtroMoto.addEventListener('input', () => {
+            const q = filtroMoto.value.toLowerCase();
+            renderizarMotos(motos.filter(m =>
+                m.nomemoto.toLowerCase().includes(q) ||
+                (m.descricaomoto || '').toLowerCase().includes(q)
+            ));
+        });
+    }
+    // Contatos
+    const filtroContato = document.getElementById('filtro-contato');
+    if (filtroContato) {
+        filtroContato.addEventListener('input', () => {
+            const q = filtroContato.value.toLowerCase();
+            renderizarContatos(contatos.filter(c =>
+                c.nomecontato.toLowerCase().includes(q) ||
+                (c.telefonecontato || '').includes(q) ||
+                (c.emailcontato || '').toLowerCase().includes(q)
+            ));
+        });
     }
 }
 
-// ================= HELPERS DE MODAL =================
+// ================= MODAIS =================
 
-function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
+function abrirModal(id)  { document.getElementById(id).style.display = 'flex'; }
 function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
 function fecharModalFora(event, id) { if (event.target.id === id) fecharModal(id); }
 
-// Ao carregar a página de estoque, chama a função que busca no banco
-document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('lista-pecas')) {
-        carregarEstoqueBanco();
+// ================= INIT =================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const temPecas    = document.getElementById('lista-pecas');
+    const temMotos    = document.getElementById('lista-motos');
+    const temPecasAlt = document.getElementById('lista-pecas-alt');
+    const temVendas   = document.getElementById('lista-vendas');
+    const temContatos = document.getElementById('lista-contatos');
+
+    if (temMotos || temContatos) {
+        await Promise.all([carregarMotosBanco(), carregarContatosBanco()]);
     }
-    if (document.getElementById('lista-motos')) {
-        carregarMotosBanco();
-    }
-    if (document.getElementById('lista-pecas-alt')) {
-        carregarEstoqueBanco();
-    }
+    if (temPecas)    await carregarEstoqueBanco();
+    if (temPecasAlt) await carregarEstoqueBanco();
+    if (temVendas)   await carregarVendasBanco();
+
+    setupFiltros();
 });

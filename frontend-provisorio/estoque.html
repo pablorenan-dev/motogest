@@ -7,18 +7,25 @@
 </head>
 <body>
     <aside class="sidebar">
-        <div class="logo-placeholder">M</div>
-        <a href="home.html" class="nav-item">- Home</a>
-        <a href="estoque.html" class="nav-item active">- Estoque</a>
-        <a href="moto.html" class="nav-item">- Motos</a>
-        <a href="vendas.html" class="nav-item">- Vendas</a>
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html" class="nav-item">Home</a>
+        <a href="estoque.html" class="nav-item active">Estoque</a>
+        <a href="moto.html" class="nav-item">Motos</a>
+        <a href="contato.html" class="nav-item">Contatos</a>
+        <a href="vendas.html" class="nav-item">Vendas</a>
+        <a href="relatorios.html"    class="nav-item">Relatórios</a>
+        <a href="chats.html"         class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
     </aside>
 
     <main class="main-content">
         <div class="estoque-header">
             <h2>Estoque</h2>
             <div class="estoque-controls">
-                <input type="text" placeholder="Filtro nome peça">
+                <input type="text" id="filtro-peca" placeholder="Filtro nome ou descrição">
                 <button class="btn-add" onclick="abrirModal('modal-add')">+</button>
             </div>
         </div>
@@ -29,6 +36,7 @@
                     <th>Produto</th>
                     <th>Descrição</th>
                     <th>Preço</th>
+                    <th>Qtd.</th>
                     <th>Ações</th>
                 </tr>
             </thead>
@@ -36,40 +44,49 @@
         </table>
     </main>
 
+    <!-- Modal: Adicionar Peça -->
     <div id="modal-add" class="modal-overlay" onclick="fecharModalFora(event, 'modal-add')">
         <div class="modal-content">
             <h3>Adicionar Peça</h3>
-            <input type="text" id="add-nome" placeholder="nome da peça">
-            <input type="text" id="add-desc" placeholder="descrição">
-            <input type="number" id="add-preco" placeholder="preço">
+            <input type="text"   id="add-nome"      placeholder="Nome da peça">
+            <input type="text"   id="add-desc"      placeholder="Descrição">
+            <input type="number" id="add-preco"     placeholder="Preço (R$)">
+            <div class="modal-row">
+                <input type="number" id="add-quantidade" placeholder="Qtd. inicial">
+                <input type="number" id="add-qtd-min"    placeholder="Qtd. mínima">
+            </div>
             <div class="modal-actions">
-                <button class="btn-cancel" onclick="fecharModal('modal-add')">Cancelar</button>
+                <button class="btn-cancel"  onclick="fecharModal('modal-add')">Cancelar</button>
                 <button class="btn-confirm" onclick="adicionarPeca()">Adicionar</button>
             </div>
         </div>
     </div>
 
+    <!-- Modal: Editar Peça -->
     <div id="modal-edit" class="modal-overlay" onclick="fecharModalFora(event, 'modal-edit')">
         <div class="modal-content">
             <h3>Editar Peça</h3>
-            <input type="text" id="edit-nome" placeholder="nome da peça">
-            <input type="text" id="edit-desc" placeholder="descrição">
-            <input type="number" id="edit-preco" placeholder="preço">
-            <input type="number" id="edit-quantidade" placeholder="quantidade">
-            <input type="number" id="edit-qtd-min" placeholder="quantidade mínima">
+            <input type="text"   id="edit-nome"      placeholder="Nome da peça">
+            <input type="text"   id="edit-desc"      placeholder="Descrição">
+            <input type="number" id="edit-preco"     placeholder="Preço (R$)">
+            <div class="modal-row">
+                <input type="number" id="edit-quantidade" placeholder="Quantidade">
+                <input type="number" id="edit-qtd-min"    placeholder="Qtd. mínima">
+            </div>
             <div class="modal-actions">
-                <button class="btn-cancel" onclick="fecharModal('modal-edit')">Cancelar</button>
+                <button class="btn-cancel"  onclick="fecharModal('modal-edit')">Cancelar</button>
                 <button class="btn-confirm" onclick="salvarEdicao()">Salvar Edição</button>
             </div>
         </div>
     </div>
 
+    <!-- Modal: Deletar Peça -->
     <div id="modal-delete" class="modal-overlay" onclick="fecharModalFora(event, 'modal-delete')">
-        <div class="modal-content" style="width: auto;">
-            <h3 style="margin-bottom: 10px;">Deseja deletar mesmo?</h3>
+        <div class="modal-content modal-confirm">
+            <h3>Deseja deletar mesmo?</h3>
             <div class="modal-actions">
                 <button class="btn-confirm" onclick="deletarPeca()">Sim</button>
-                <button class="btn-reject" onclick="fecharModal('modal-delete')">Não</button>
+                <button class="btn-reject"  onclick="fecharModal('modal-delete')">Não</button>
             </div>
         </div>
     </div>
