@@ -1370,3 +1370,48 @@ body {
 }
 
 .btn-sucesso-fechar:hover { background: #248a5a; }
+
+.status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .status-aguardando { background: #fef3c7; color: #92400e; }
+        .status-em_andamento { background: #dbeafe; color: #1e40af; }
+        .status-impedimento { background: #fee2e2; color: #991b1b; }
+        .status-pronto { background: #dcfce7; color: #15803d; }
+
+        /* Prioridade badges */
+        .prioridade-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .prioridade-baixo { background: #e0f2fe; color: #0369a1; }
+        .prioridade-normal { background: #f3f4f6; color: #374151; }
+        .prioridade-medio { background: #fed7aa; color: #92400e; }
+        .prioridade-alto { background: #fca5a5; color: #7f1d1d; }
+        .prioridade-urgente { background: #f87171; color: #fff; }
+
+        /* Select nos modais */
+        .modal-select {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+            font-family: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .modal-select:focus {
+            border-color: #2d9e6b;
+            box-shadow: 0 0 0 3px rgba(45,158,107,0.12);
+        }

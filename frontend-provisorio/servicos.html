@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Serviços - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html" class="nav-item">Home</a>
+        <a href="estoque.html" class="nav-item">Estoque</a>
+        <a href="moto.html" class="nav-item">Motos</a>
+        <a href="contato.html" class="nav-item">Contatos</a>
+        <a href="servicos.html" class="nav-item active">Serviços</a>
+        <a href="vendas.html" class="nav-item">Vendas</a>
+        <a href="relatorios.html" class="nav-item">Relatórios</a>
+        <a href="chats.html" class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
+    </aside>
+
+    <main class="main-content">
+        <div class="estoque-header">
+            <h2>Serviços</h2>
+            <div class="estoque-controls">
+                <input type="text" id="filtro-servico" placeholder="Filtro nome ou descrição">
+                <button class="btn-add" onclick="prepararAddServicoModal()">+</button>
+            </div>
+        </div>
+
+        <table class="item-list">
+            <thead>
+                <tr>
+                    <th>Serviço</th>
+                    <th>Status</th>
+                    <th>Prioridade</th>
+                    <th>Motos</th>
+                    <th>Contatos</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="lista-servicos"></tbody>
+        </table>
+    </main>
+
+    <!-- Modal: Adicionar Serviço -->
+    <div id="modal-add-servico" class="modal-overlay" onclick="fecharModalFora(event, 'modal-add-servico')">
+        <div class="modal-content">
+            <h3>Adicionar Serviço</h3>
+            <input type="text" id="add-nome" placeholder="Nome do serviço">
+            <input type="text" id="add-desc" placeholder="Descrição (opcional)">
+            
+            <div class="modal-row">
+                <div class="qty-field">
+                    <label class="qty-label">Status</label>
+                    <select id="add-status" class="modal-select">
+                        <option value="aguardando">Aguardando</option>
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="impedimento">Impedimento</option>
+                        <option value="pronto">Pronto</option>
+                    </select>
+                </div>
+                <div class="qty-field">
+                    <label class="qty-label">Prioridade</label>
+                    <select id="add-prioridade" class="modal-select">
+                        <option value="baixo">Baixo</option>
+                        <option value="normal">Normal</option>
+                        <option value="medio">Médio</option>
+                        <option value="alto">Alto</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="vincular-label">Vincular motos</div>
+            <div class="chip-selector" id="add-servico-motos"></div>
+
+            <div class="vincular-label">Vincular contatos</div>
+            <div class="chip-selector" id="add-servico-contatos"></div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="fecharModal('modal-add-servico')">Cancelar</button>
+                <button class="btn-confirm" onclick="adicionarServico()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Serviço -->
+    <div id="modal-edit-servico" class="modal-overlay" onclick="fecharModalFora(event, 'modal-edit-servico')">
+        <div class="modal-content">
+            <h3>Editar Serviço</h3>
+            <input type="text" id="edit-nome" placeholder="Nome do serviço">
+            <input type="text" id="edit-desc" placeholder="Descrição (opcional)">
+            
+            <div class="modal-row">
+                <div class="qty-field">
+                    <label class="qty-label">Status</label>
+                    <select id="edit-status" class="modal-select">
+                        <option value="aguardando">Aguardando</option>
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="impedimento">Impedimento</option>
+                        <option value="pronto">Pronto</option>
+                    </select>
+                </div>
+                <div class="qty-field">
+                    <label class="qty-label">Prioridade</label>
+                    <select id="edit-prioridade" class="modal-select">
+                        <option value="baixo">Baixo</option>
+                        <option value="normal">Normal</option>
+                        <option value="medio">Médio</option>
+                        <option value="alto">Alto</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="vincular-label">Motos vinculadas</div>
+            <div class="chip-selector" id="edit-servico-motos"></div>
+
+            <div class="vincular-label">Contatos vinculados</div>
+            <div class="chip-selector" id="edit-servico-contatos"></div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="fecharModal('modal-edit-servico')">Cancelar</button>
+                <button class="btn-confirm" onclick="salvarEdicaoServico()">Salvar Edição</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Deletar Serviço -->
+    <div id="modal-delete-servico" class="modal-overlay" onclick="fecharModalFora(event, 'modal-delete-servico')">
+        <div class="modal-content modal-confirm">
+            <h3>Deseja deletar mesmo?</h3>
+            <div class="modal-actions">
+                <button class="btn-confirm" onclick="deletarServico()">Sim</button>
+                <button class="btn-reject" onclick="fecharModal('modal-delete-servico')">Não</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

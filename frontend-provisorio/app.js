@@ -920,3 +920,265 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupFiltros();
     injetarNomeOrg();
 });
+
+let servicos = [];
+        let servicoAtualId = null;
+
+        async function carregarServicosBanco() {
+            const usuarioSalvo = localStorage.getItem('usuarioLogado');
+            if (!usuarioSalvo) return;
+            const usuario = JSON.parse(usuarioSalvo);
+            const idOrganizacao = usuario.usuario.idOrganizacao;
+            try {
+                const resposta = await fetchAutenticado(`${API_URL}/servicos/${idOrganizacao}`);
+                if (resposta && resposta.ok) {
+                    servicos = await resposta.json();
+                    renderizarServicos();
+                }
+            } catch (erro) { console.error("Erro ao buscar serviços:", erro); }
+        }
+
+        function renderizarServicos(data = servicos) {
+            const lista = document.getElementById('lista-servicos');
+            if (!lista) return;
+            lista.innerHTML = '';
+            if (data.length === 0) {
+                lista.innerHTML = `<tr><td colspan="6" class="empty-state-row"><span class="empty-state-icon">🔧</span><span>Nenhum serviço cadastrado ainda.</span></td></tr>`;
+                return;
+            }
+            data.forEach(servico => {
+                const tr = document.createElement('tr');
+                tr.className = 'item-card';
+
+                const tdNome = document.createElement('td');
+                tdNome.textContent = servico.nomeservico;
+
+                const tdStatus = document.createElement('td');
+                tdStatus.innerHTML = `<span class="status-badge status-${servico.statusservico}">${traduzirStatus(servico.statusservico)}</span>`;
+
+                const tdPrioridade = document.createElement('td');
+                tdPrioridade.innerHTML = `<span class="prioridade-badge prioridade-${servico.prioridade}">${traduzirPrioridade(servico.prioridade)}</span>`;
+
+                const tdMotos = document.createElement('td');
+                tdMotos.innerHTML = servico.motos && servico.motos.length > 0
+                    ? servico.motos.map(m => `<span class="tag-moto">${m.nomemoto}</span>`).join('')
+                    : '<span class="sem-vinculo">-</span>';
+
+                const tdContatos = document.createElement('td');
+                tdContatos.innerHTML = servico.contatos && servico.contatos.length > 0
+                    ? servico.contatos.map(c => `<span class="tag-moto">${c.nomecontato}</span>`).join('')
+                    : '<span class="sem-vinculo">-</span>';
+
+                const tdActions = document.createElement('td');
+                tdActions.className = 'item-actions';
+                const btnEdit = document.createElement('button');
+                btnEdit.className = 'btn-edit';
+                btnEdit.textContent = '✏️';
+                btnEdit.onclick = () => abrirModalEditarServico(servico.idservico);
+                const btnDelete = document.createElement('button');
+                btnDelete.className = 'btn-delete';
+                btnDelete.textContent = '🗑️';
+                btnDelete.onclick = () => abrirModalDeletarServico(servico.idservico);
+                tdActions.appendChild(btnEdit);
+                tdActions.appendChild(btnDelete);
+
+                tr.appendChild(tdNome);
+                tr.appendChild(tdStatus);
+                tr.appendChild(tdPrioridade);
+                tr.appendChild(tdMotos);
+                tr.appendChild(tdContatos);
+                tr.appendChild(tdActions);
+                lista.appendChild(tr);
+            });
+        }
+
+        function traduzirStatus(status) {
+            const map = {
+                'aguardando': 'Aguardando',
+                'em_andamento': 'Em andamento',
+                'impedimento': 'Impedimento',
+                'pronto': 'Pronto'
+            };
+            return map[status] || status;
+        }
+
+        function traduzirPrioridade(prioridade) {
+            const map = {
+                'baixo': 'Baixo',
+                'normal': 'Normal',
+                'medio': 'Médio',
+                'alto': 'Alto',
+                'urgente': 'Urgente'
+            };
+            return map[prioridade] || prioridade;
+        }
+
+        function prepararAddServicoModal() {
+            renderizarSearchPicker('add-servico-motos', motos, 'idmoto', 'nomemoto');
+            renderizarSearchPicker('add-servico-contatos', contatos, 'idcontato', 'nomecontato');
+            abrirModal('modal-add-servico');
+        }
+
+        async function adicionarServico() {
+            const nome = document.getElementById('add-nome').value.trim();
+            const desc = document.getElementById('add-desc').value.trim();
+            const status = document.getElementById('add-status').value;
+            const prioridade = document.getElementById('add-prioridade').value;
+
+            if (!nome) { alert("Nome do serviço é obrigatório."); return; }
+
+            const usuarioSalvo = localStorage.getItem('usuarioLogado');
+            if (!usuarioSalvo) return;
+            const dados = JSON.parse(usuarioSalvo);
+
+            try {
+                const resposta = await fetchAutenticado(`${API_URL}/servicos`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        nomeServico: nome,
+                        descricaoServico: desc,
+                        statusServico: status,
+                        prioridade: prioridade,
+                        idOrganizacao: dados.usuario.idOrganizacao
+                    })
+                });
+
+                if (resposta && resposta.ok) {
+                    const resultado = await resposta.json();
+                    const idServico = resultado.servico.idservico;
+
+                    const idsMotosSelecionadas = getSelectedFromPicker('add-servico-motos');
+                    const idsContatosSelecionados = getSelectedFromPicker('add-servico-contatos');
+
+                    await Promise.all([
+                        ...idsMotosSelecionadas.map(id => vincularMotoServico(idServico, id)),
+                        ...idsContatosSelecionados.map(id => vincularContatoServico(idServico, id))
+                    ]);
+
+                    fecharModal('modal-add-servico');
+                    document.getElementById('add-nome').value = '';
+                    document.getElementById('add-desc').value = '';
+                    await Promise.all([carregarServicosBanco(), carregarMotosBanco(), carregarContatosBanco()]);
+                } else { alert("Erro ao salvar o serviço."); }
+            } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+        }
+
+        function abrirModalEditarServico(id) {
+            servicoAtualId = id;
+            const servico = servicos.find(s => s.idservico === id);
+            if (!servico) return;
+
+            document.getElementById('edit-nome').value = servico.nomeservico || '';
+            document.getElementById('edit-desc').value = servico.descricaoservico || '';
+            document.getElementById('edit-status').value = servico.statusservico || 'aguardando';
+            document.getElementById('edit-prioridade').value = servico.prioridade || 'normal';
+
+            const motosSelecionadas = servico.motos ? servico.motos.map(m => String(m.idmoto)) : [];
+            const contatosSelecionados = servico.contatos ? servico.contatos.map(c => String(c.idcontato)) : [];
+
+            renderizarSearchPicker('edit-servico-motos', motos, 'idmoto', 'nomemoto', motosSelecionadas);
+            renderizarSearchPicker('edit-servico-contatos', contatos, 'idcontato', 'nomecontato', contatosSelecionados);
+
+            abrirModal('modal-edit-servico');
+        }
+
+        async function salvarEdicaoServico() {
+            const nome = document.getElementById('edit-nome').value.trim();
+            const desc = document.getElementById('edit-desc').value.trim();
+            const status = document.getElementById('edit-status').value;
+            const prioridade = document.getElementById('edit-prioridade').value;
+
+            if (!nome) { alert("Nome do serviço é obrigatório."); return; }
+
+            try {
+                const resposta = await fetchAutenticado(`${API_URL}/servicos/${servicoAtualId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        nomeServico: nome,
+                        descricaoServico: desc,
+                        statusServico: status,
+                        prioridade: prioridade
+                    })
+                });
+
+                if (resposta && resposta.ok) {
+                    await sincronizarMotosDoServico(servicoAtualId, getSelectedFromPicker('edit-servico-motos'));
+                    await sincronizarContatosDoServico(servicoAtualId, getSelectedFromPicker('edit-servico-contatos'));
+                    fecharModal('modal-edit-servico');
+                    await Promise.all([carregarServicosBanco(), carregarMotosBanco(), carregarContatosBanco()]);
+                } else { alert("Erro ao atualizar o serviço."); }
+            } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+        }
+
+        function abrirModalDeletarServico(id) { servicoAtualId = id; abrirModal('modal-delete-servico'); }
+
+        async function deletarServico() {
+            try {
+                const resposta = await fetchAutenticado(`${API_URL}/servicos/${servicoAtualId}`, { method: 'DELETE' });
+                if (resposta && resposta.ok) { fecharModal('modal-delete-servico'); carregarServicosBanco(); }
+                else { alert("Erro ao deletar o serviço."); }
+            } catch (erro) { console.error(erro); alert("Erro de conexão."); }
+        }
+
+        // ================= VINCULAR / DESVINCULAR =================
+
+        async function vincularMotoServico(idServico, idMoto) {
+            return fetchAutenticado(`${API_URL}/servicos/${idServico}/motos/${idMoto}`, { method: 'POST' });
+        }
+
+        async function desvincularMotoServico(idServico, idMoto) {
+            return fetchAutenticado(`${API_URL}/servicos/${idServico}/motos/${idMoto}`, { method: 'DELETE' });
+        }
+
+        async function vincularContatoServico(idServico, idContato) {
+            return fetchAutenticado(`${API_URL}/servicos/${idServico}/contatos/${idContato}`, { method: 'POST' });
+        }
+
+        async function desvincularContatoServico(idServico, idContato) {
+            return fetchAutenticado(`${API_URL}/servicos/${idServico}/contatos/${idContato}`, { method: 'DELETE' });
+        }
+
+        async function sincronizarMotosDoServico(idServico, idsMotosSelecionadas) {
+            const servico = servicos.find(s => String(s.idservico) === String(idServico));
+            const atualmenteVinculadas = servico && servico.motos ? servico.motos.map(m => String(m.idmoto)) : [];
+            const adicionar = idsMotosSelecionadas.filter(id => !atualmenteVinculadas.includes(id));
+            const remover = atualmenteVinculadas.filter(id => !idsMotosSelecionadas.includes(id));
+            await Promise.all([
+                ...adicionar.map(id => vincularMotoServico(idServico, id)),
+                ...remover.map(id => desvincularMotoServico(idServico, id))
+            ]);
+        }
+
+        async function sincronizarContatosDoServico(idServico, idsContatosSelecionados) {
+            const servico = servicos.find(s => String(s.idservico) === String(idServico));
+            const atualmenteVinculados = servico && servico.contatos ? servico.contatos.map(c => String(c.idcontato)) : [];
+            const adicionar = idsContatosSelecionados.filter(id => !atualmenteVinculados.includes(id));
+            const remover = atualmenteVinculados.filter(id => !idsContatosSelecionados.includes(id));
+            await Promise.all([
+                ...adicionar.map(id => vincularContatoServico(idServico, id)),
+                ...remover.map(id => desvincularContatoServico(idServico, id))
+            ]);
+        }
+
+        // ================= FILTRO =================
+
+        function setupFiltroServico() {
+            const filtroServico = document.getElementById('filtro-servico');
+            if (filtroServico) {
+                filtroServico.addEventListener('input', () => {
+                    const q = filtroServico.value.toLowerCase();
+                    renderizarServicos(servicos.filter(s =>
+                        s.nomeservico.toLowerCase().includes(q) ||
+                        (s.descricaoservico || '').toLowerCase().includes(q)
+                    ));
+                });
+            }
+        }
+
+        // ================= INIT =================
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await Promise.all([carregarServicosBanco(), carregarMotosBanco(), carregarContatosBanco()]);
+            setupFiltroServico();
+            injetarNomeOrg();
+        });
