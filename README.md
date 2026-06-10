@@ -18,7 +18,9 @@ motogest/
 │   ├── moto.html              # Cadastro de motos com vinculação de contatos
 │   ├── contato.html           # Cadastro de contatos com vinculação de motos
 │   ├── vendas.html            # Registro de vendas (desconta estoque)
-│   ├── relatorios.html        # Histórico de vendas e gráfico por período
+│   ├── servicos.html          # Gestão de serviços (status, prioridade, motos, contatos, produtos)
+│   ├── servico.html           # Detalhe de um serviço (motos, contatos, produtos vinculados)
+│   ├── relatorios.html        # Vendas, serviços concluídos e histórico de envios WhatsApp
 │   ├── chats.html             # Mensagens WhatsApp (layout três painéis)
 │   ├── configuracoes.html     # Conexão WhatsApp via QR, conta e logout
 │   ├── app.js                 # Funções compartilhadas (auth guard, fetchAutenticado)
@@ -136,6 +138,8 @@ const idOrganizacao = usuario.idOrganizacao;
 - Venda e compra atualizam o estoque via transação — se qualquer item falhar, nada é salvo.
 - A integração WhatsApp usa a biblioteca Baileys (cliente não-oficial do WhatsApp Web). Credenciais são salvas em `.whatsapp-auth/` e persistem entre reinicializações.
 - Mensagens e chats do WhatsApp são armazenados **em memória** — reiniciar o backend limpa o histórico em cache (as credenciais de conexão permanecem).
+- As tabelas de junção `servico_moto`, `servico_contato` e `servico_produto` usam colunas `TEXT` para os IDs, pois o Supabase cria algumas tabelas com UUID e outras com INTEGER — o cast `::text` nas queries garante compatibilidade.
+- A tabela `log_envio_whatsapp` é criada automaticamente pelo backend na primeira inicialização (requer permissão DDL no banco). Se o Supabase bloquear o `CREATE TABLE`, crie manualmente via SQL Editor.
 
 ---
 
@@ -291,12 +295,32 @@ Cria organização e usuário em uma única transação e retorna o token (já e
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `GET` | `/servicos/:idOrganizacao` | Lista serviços com motos e contatos |
+| `GET` | `/servicos/:idOrganizacao` | Lista serviços com motos, contatos e produtos |
+| `GET` | `/servicos/detalhe/:idServico` | Detalhe completo de um serviço |
 | `POST` | `/servicos` | Cria serviço |
 | `PUT` | `/servicos/:idServico` | Edita |
 | `DELETE` | `/servicos/:idServico` | Remove |
 | `POST/DELETE` | `/servicos/:idServico/motos/:idMoto` | Vincula/desvincula moto |
 | `POST/DELETE` | `/servicos/:idServico/contatos/:idContato` | Vincula/desvincula contato |
+| `POST/DELETE` | `/servicos/:idServico/produtos/:idProduto` | Vincula/desvincula produto |
+
+**Body `POST /servicos`:**
+```json
+{
+  "nomeServico": "Troca de óleo",
+  "descricaoServico": "Óleo 10W40 semi-sintético",
+  "statusServico": "aguardando",
+  "prioridade": "normal",
+  "valorServico": 120.00,
+  "observacoes": "Cliente prefere horário da tarde",
+  "idOrganizacao": "uuid-da-org"
+}
+```
+
+**Body `POST /servicos/:id/produtos/:idProduto`:**
+```json
+{ "quantidade": 2 }
+```
 
 > Valores para `statusServico`: `aguardando`, `em_andamento`, `impedimento`, `pronto`  
 > Valores para `prioridade`: `baixo`, `normal`, `medio`, `alto`, `urgente`
@@ -350,6 +374,9 @@ O SSE aceita o token via query param: `?token=...` (necessário pois `EventSourc
 | `GET` | `/whatsapp/mensagens/:jid?limit=50` | Mensagens de uma conversa |
 | `GET` | `/whatsapp/media/:jid/:msgId` | Download de mídia (vídeo, documento) |
 | `POST` | `/whatsapp/enviar` | Envia mensagem de texto |
+| `POST` | `/whatsapp/enviar-lote` | Enfileira envio em massa (1 msg/min em background) |
+| `GET` | `/whatsapp/logs?idOrganizacao=...` | Histórico de envios com status pendente/enviado/erro |
+| `GET` | `/whatsapp/fila-status` | Quantidade de mensagens pendentes na fila |
 | `POST` | `/whatsapp/iniciar` | Inicia nova conversa por número de telefone |
 | `POST` | `/whatsapp/conectar` | Inicia conexão (gera QR se necessário) |
 | `POST` | `/whatsapp/desconectar` | Encerra sessão (logout do WhatsApp) |
@@ -369,6 +396,20 @@ O SSE aceita o token via query param: `?token=...` (necessário pois `EventSourc
 ```json
 { "jid": "5511999999999@s.whatsapp.net", "texto": "Olá!" }
 ```
+
+**Body `POST /whatsapp/enviar-lote`:**
+```json
+{
+  "mensagem": "Sua moto está pronta para retirada!",
+  "idServico": "uuid-do-servico",
+  "idOrganizacao": "uuid-da-org",
+  "contatos": [
+    { "jid": "5551999999999@s.whatsapp.net", "nome": "João" }
+  ]
+}
+```
+
+> O envio em lote é **assíncrono** — o endpoint responde imediatamente e o servidor processa em background com 1 minuto de intervalo entre cada mensagem. As linhas aparecem como `pendente` na tabela `log_envio_whatsapp` e são atualizadas para `enviado` ou `erro` conforme o resultado. **Reiniciar o servidor cancela a fila pendente** (os logs já inseridos permanecem).
 
 **Body `POST /whatsapp/iniciar`:**
 ```json
