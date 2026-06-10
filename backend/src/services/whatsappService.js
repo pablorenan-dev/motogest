@@ -315,6 +315,39 @@ export async function desconectar() {
     console.log('[WA] Desconectado — credenciais removidas.');
 }
 
+// ── Fila de envio em lote ─────────────────────────────────────────────────────
+const loteQueue = [];
+let loteProcessando = false;
+
+export async function enfileirarLote(items) {
+    loteQueue.push(...items);
+    if (!loteProcessando) _processarLote();
+    return { enfileirados: items.length };
+}
+
+export function getFilaStatus() {
+    return { pendentes: loteQueue.length, processando: loteProcessando };
+}
+
+async function _processarLote() {
+    loteProcessando = true;
+    while (loteQueue.length > 0) {
+        const item = loteQueue.shift();
+        try {
+            await enviar(item.jid, item.texto);
+            if (item.onSuccess) await item.onSuccess().catch(err => console.error('onSuccess falhou:', err));
+        } catch (e) {
+            try {
+                if (item.onError) await item.onError(e.message);
+            } catch (e2) { console.error('onError falhou:', e2); }
+        }
+        if (loteQueue.length > 0) {
+            await new Promise(r => setTimeout(r, 60000));
+        }
+    }
+    loteProcessando = false;
+}
+
 // ── Envio ─────────────────────────────────────────────────────────────────────
 export async function enviar(jid, texto) {
     if (!sock || status !== 'connected') throw new Error('WhatsApp não conectado.');

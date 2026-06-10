@@ -15,11 +15,11 @@
         <a href="estoque.html" class="nav-item">Estoque</a>
         <a href="moto.html" class="nav-item">Motos</a>
         <a href="contato.html" class="nav-item">Contatos</a>
-        <a href="vendas.html" class="nav-item">Vendas</a>
-        <a href="relatorios.html"    class="nav-item active">Relatórios</a>
-        <a href="chats.html"         class="nav-item">Chats</a>
-        <a href="configuracoes.html" class="nav-item">Configurações</a>
         <a href="servicos.html" class="nav-item">Serviços</a>
+        <a href="vendas.html" class="nav-item">Vendas</a>
+        <a href="relatorios.html" class="nav-item active">Relatórios</a>
+        <a href="chats.html" class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
     </aside>
 
     <main class="main-content">
@@ -63,7 +63,7 @@
             </div>
         </div>
 
-        <!-- Tabela de histórico -->
+        <!-- Tabela de histórico de vendas -->
         <table class="item-list" style="margin-top: 30px; width: 100%;">
             <thead>
                 <tr>
@@ -73,6 +73,35 @@
                 </tr>
             </thead>
             <tbody id="lista-vendas"></tbody>
+        </table>
+
+        <!-- Serviços concluídos -->
+        <div class="relatorio-section-title">Serviços concluídos</div>
+        <table class="item-list" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Data entrada</th>
+                    <th>Serviço</th>
+                    <th>Moto(s)</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody id="lista-servicos-rel"></tbody>
+        </table>
+
+        <!-- Logs de envio WhatsApp -->
+        <div class="relatorio-section-title">Histórico de mensagens enviadas</div>
+        <table class="item-list" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Contato</th>
+                    <th>Serviço ID</th>
+                    <th>Status</th>
+                    <th>Erro</th>
+                </tr>
+            </thead>
+            <tbody id="lista-logs-wa"></tbody>
         </table>
     </main>
 

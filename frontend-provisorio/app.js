@@ -866,11 +866,22 @@ function stepQty(id, delta) {
 }
 function fecharModalFora(event, id) { if (event.target.id === id) fecharModal(id); }
 
+// ================= TOAST =================
+
+function mostrarToast(html, duracao = 5000) {
+    const t = document.createElement('div');
+    t.className = 'toast-notif';
+    t.innerHTML = html;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), duracao);
+}
+
 // ================= SIDEBAR ORG NAME =================
 
 async function injetarNomeOrg() {
     const sidebarLogo = document.querySelector('.sidebar-logo');
     if (!sidebarLogo) return;
+    if (sidebarLogo.querySelector('.logo-row')) return;
 
     // Reestrutura: envolve ícone + texto numa .logo-row
     const row = document.createElement('div');
@@ -919,6 +930,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     setupFiltros();
     injetarNomeOrg();
+
+    if (document.getElementById('lista-logs-wa'))    carregarLogsWhatsapp();
+    if (document.getElementById('lista-servicos-rel')) carregarServicosRelatorio();
 });
 
 let servicos = [];
@@ -949,6 +963,11 @@ let servicos = [];
             data.forEach(servico => {
                 const tr = document.createElement('tr');
                 tr.className = 'item-card';
+                tr.style.cursor = 'pointer';
+                tr.onclick = (e) => {
+                    if (e.target.closest('.item-actions')) return;
+                    window.location.href = `servico.html?id=${servico.idservico}`;
+                };
 
                 const tdNome = document.createElement('td');
                 tdNome.textContent = servico.nomeservico;
@@ -979,6 +998,12 @@ let servicos = [];
                 btnDelete.className = 'btn-delete';
                 btnDelete.textContent = '🗑️';
                 btnDelete.onclick = () => abrirModalDeletarServico(servico.idservico);
+                const btnTerminar = document.createElement('button');
+                btnTerminar.className = 'btn-terminar';
+                btnTerminar.title = 'Terminar e notificar contatos';
+                btnTerminar.textContent = '✅';
+                btnTerminar.onclick = () => abrirModalTerminar(servico.idservico);
+                tdActions.appendChild(btnTerminar);
                 tdActions.appendChild(btnEdit);
                 tdActions.appendChild(btnDelete);
 
@@ -1016,12 +1041,15 @@ let servicos = [];
         function prepararAddServicoModal() {
             renderizarSearchPicker('add-servico-motos', motos, 'idmoto', 'nomemoto');
             renderizarSearchPicker('add-servico-contatos', contatos, 'idcontato', 'nomecontato');
+            renderizarSearchPicker('add-servico-produtos', pecas, 'idproduto', 'nomeproduto');
             abrirModal('modal-add-servico');
         }
 
         async function adicionarServico() {
             const nome = document.getElementById('add-nome').value.trim();
             const desc = document.getElementById('add-desc').value.trim();
+            const obs = document.getElementById('add-obs').value.trim();
+            const valor = document.getElementById('add-valor').value.trim();
             const status = document.getElementById('add-status').value;
             const prioridade = document.getElementById('add-prioridade').value;
 
@@ -1036,7 +1064,9 @@ let servicos = [];
                     method: 'POST',
                     body: JSON.stringify({
                         nomeServico: nome,
-                        descricaoServico: desc,
+                        descricaoServico: desc || null,
+                        observacoes: obs || null,
+                        valorServico: valor ? parseFloat(valor) : null,
                         statusServico: status,
                         prioridade: prioridade,
                         idOrganizacao: dados.usuario.idOrganizacao
@@ -1050,14 +1080,18 @@ let servicos = [];
                     const idsMotosSelecionadas = getSelectedFromPicker('add-servico-motos');
                     const idsContatosSelecionados = getSelectedFromPicker('add-servico-contatos');
 
+                    const idsProdutosSelecionados = getSelectedFromPicker('add-servico-produtos');
                     await Promise.all([
                         ...idsMotosSelecionadas.map(id => vincularMotoServico(idServico, id)),
-                        ...idsContatosSelecionados.map(id => vincularContatoServico(idServico, id))
+                        ...idsContatosSelecionados.map(id => vincularContatoServico(idServico, id)),
+                        ...idsProdutosSelecionados.map(id => fetchAutenticado(`${API_URL}/servicos/${idServico}/produtos/${id}`, { method: 'POST' }))
                     ]);
 
                     fecharModal('modal-add-servico');
                     document.getElementById('add-nome').value = '';
                     document.getElementById('add-desc').value = '';
+                    document.getElementById('add-obs').value = '';
+                    document.getElementById('add-valor').value = '';
                     await Promise.all([carregarServicosBanco(), carregarMotosBanco(), carregarContatosBanco()]);
                 } else { alert("Erro ao salvar o serviço."); }
             } catch (erro) { console.error(erro); alert("Erro de conexão."); }
@@ -1070,14 +1104,18 @@ let servicos = [];
 
             document.getElementById('edit-nome').value = servico.nomeservico || '';
             document.getElementById('edit-desc').value = servico.descricaoservico || '';
+            document.getElementById('edit-obs').value = servico.observacoes || '';
+            document.getElementById('edit-valor').value = servico.valorservico || '';
             document.getElementById('edit-status').value = servico.statusservico || 'aguardando';
             document.getElementById('edit-prioridade').value = servico.prioridade || 'normal';
 
             const motosSelecionadas = servico.motos ? servico.motos.map(m => String(m.idmoto)) : [];
             const contatosSelecionados = servico.contatos ? servico.contatos.map(c => String(c.idcontato)) : [];
+            const produtosSelecionados = servico.produtos ? servico.produtos.map(p => String(p.idproduto)) : [];
 
             renderizarSearchPicker('edit-servico-motos', motos, 'idmoto', 'nomemoto', motosSelecionadas);
             renderizarSearchPicker('edit-servico-contatos', contatos, 'idcontato', 'nomecontato', contatosSelecionados);
+            renderizarSearchPicker('edit-servico-produtos', pecas, 'idproduto', 'nomeproduto', produtosSelecionados);
 
             abrirModal('modal-edit-servico');
         }
@@ -1085,6 +1123,8 @@ let servicos = [];
         async function salvarEdicaoServico() {
             const nome = document.getElementById('edit-nome').value.trim();
             const desc = document.getElementById('edit-desc').value.trim();
+            const obs = document.getElementById('edit-obs').value.trim();
+            const valor = document.getElementById('edit-valor').value.trim();
             const status = document.getElementById('edit-status').value;
             const prioridade = document.getElementById('edit-prioridade').value;
 
@@ -1095,7 +1135,9 @@ let servicos = [];
                     method: 'PUT',
                     body: JSON.stringify({
                         nomeServico: nome,
-                        descricaoServico: desc,
+                        descricaoServico: desc || null,
+                        observacoes: obs || null,
+                        valorServico: valor ? parseFloat(valor) : null,
                         statusServico: status,
                         prioridade: prioridade
                     })
@@ -1104,6 +1146,7 @@ let servicos = [];
                 if (resposta && resposta.ok) {
                     await sincronizarMotosDoServico(servicoAtualId, getSelectedFromPicker('edit-servico-motos'));
                     await sincronizarContatosDoServico(servicoAtualId, getSelectedFromPicker('edit-servico-contatos'));
+                    await sincronizarProdutosDoServico(servicoAtualId, getSelectedFromPicker('edit-servico-produtos'));
                     fecharModal('modal-edit-servico');
                     await Promise.all([carregarServicosBanco(), carregarMotosBanco(), carregarContatosBanco()]);
                 } else { alert("Erro ao atualizar o serviço."); }
@@ -1149,6 +1192,17 @@ let servicos = [];
             ]);
         }
 
+        async function sincronizarProdutosDoServico(idServico, idsProdutosSelecionados) {
+            const servico = servicos.find(s => String(s.idservico) === String(idServico));
+            const atualmenteVinculados = servico && servico.produtos ? servico.produtos.map(p => String(p.idproduto)) : [];
+            const adicionar = idsProdutosSelecionados.filter(id => !atualmenteVinculados.includes(id));
+            const remover = atualmenteVinculados.filter(id => !idsProdutosSelecionados.includes(id));
+            await Promise.all([
+                ...adicionar.map(id => fetchAutenticado(`${API_URL}/servicos/${idServico}/produtos/${id}`, { method: 'POST' })),
+                ...remover.map(id => fetchAutenticado(`${API_URL}/servicos/${idServico}/produtos/${id}`, { method: 'DELETE' }))
+            ]);
+        }
+
         async function sincronizarContatosDoServico(idServico, idsContatosSelecionados) {
             const servico = servicos.find(s => String(s.idservico) === String(idServico));
             const atualmenteVinculados = servico && servico.contatos ? servico.contatos.map(c => String(c.idcontato)) : [];
@@ -1158,6 +1212,99 @@ let servicos = [];
                 ...adicionar.map(id => vincularContatoServico(idServico, id)),
                 ...remover.map(id => desvincularContatoServico(idServico, id))
             ]);
+        }
+
+        // ================= TERMINAR SERVIÇO =================
+
+        function telefoneParaJid(tel) {
+            if (!tel) return null;
+            const digits = tel.replace(/\D/g, '');
+            if (digits.length >= 12 && digits.startsWith('55')) return `${digits}@s.whatsapp.net`;
+            return `55${digits}@s.whatsapp.net`;
+        }
+
+        function abrirModalTerminar(id) {
+            const servico = servicos.find(s => s.idservico === id);
+            if (!servico) return;
+            servicoAtualId = id;
+
+            const motosNomes = servico.motos && servico.motos.length > 0
+                ? servico.motos.map(m => m.nomemoto).join(', ')
+                : 'sua moto';
+            document.getElementById('terminar-mensagem').value =
+                `Olá! O serviço *${servico.nomeservico}* foi concluído. ${motosNomes} está pronta para retirada! 🏍️`;
+
+            const lista = document.getElementById('terminar-contatos-lista');
+            if (servico.contatos && servico.contatos.length > 0) {
+                lista.innerHTML = servico.contatos.map(c => {
+                    const temTel = !!c.telefonecontato;
+                    return `<label class="terminar-contato-item${temTel ? '' : ' terminar-sem-tel'}">
+                        <input type="checkbox" class="terminar-contato-check"
+                            data-jid="${temTel ? telefoneParaJid(c.telefonecontato) : ''}"
+                            data-nome="${c.nomecontato}"
+                            ${temTel ? 'checked' : 'disabled'}>
+                        <span class="terminar-contato-nome">${c.nomecontato}</span>
+                        <span class="terminar-tel">${c.telefonecontato || 'Sem telefone'}</span>
+                    </label>`;
+                }).join('');
+            } else {
+                lista.innerHTML = '<span class="sd-sem-vinculo">Nenhum contato vinculado a este serviço.</span>';
+            }
+
+            document.getElementById('terminar-progresso').style.display = 'none';
+            document.getElementById('terminar-actions').style.display = 'flex';
+            abrirModal('modal-terminar');
+        }
+
+        async function finalizarServico() {
+            const servico = servicos.find(s => s.idservico === servicoAtualId);
+            if (!servico || servico.statusservico === 'pronto') return;
+            await fetchAutenticado(`${API_URL}/servicos/${servicoAtualId}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    nomeServico: servico.nomeservico,
+                    descricaoServico: servico.descricaoservico || null,
+                    observacoes: servico.observacoes || null,
+                    valorServico: servico.valorservico || null,
+                    statusServico: 'pronto',
+                    prioridade: servico.prioridade
+                })
+            });
+        }
+
+        async function enviarMensagensTermino() {
+            const mensagem = document.getElementById('terminar-mensagem').value.trim();
+            if (!mensagem) { alert('A mensagem não pode estar vazia.'); return; }
+
+            const checks = Array.from(document.querySelectorAll('.terminar-contato-check:checked:not(:disabled)'));
+            const contatos = checks.map(c => ({ jid: c.dataset.jid, nome: c.dataset.nome }));
+
+            await finalizarServico();
+            await carregarServicosBanco();
+            fecharModal('modal-terminar');
+
+            if (contatos.length === 0) {
+                mostrarToast('✅ Serviço marcado como <b>pronto</b>.');
+                return;
+            }
+
+            const usuarioSalvo = localStorage.getItem('usuarioLogado');
+            const { usuario } = JSON.parse(usuarioSalvo);
+
+            try {
+                await fetchAutenticado(`${API_URL}/whatsapp/enviar-lote`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        contatos,
+                        mensagem,
+                        idServico: servicoAtualId,
+                        idOrganizacao: usuario.idOrganizacao
+                    })
+                });
+                mostrarToast(`✅ Enviando para <b>${contatos.length} contato(s)</b> em background.<br>Acompanhe os logs em <b>Relatórios</b>.`, 7000);
+            } catch (e) {
+                mostrarToast('❌ Erro ao enfileirar envio. Verifique o WhatsApp.');
+            }
         }
 
         // ================= FILTRO =================
@@ -1178,7 +1325,78 @@ let servicos = [];
         // ================= INIT =================
 
         document.addEventListener('DOMContentLoaded', async () => {
-            await Promise.all([carregarServicosBanco(), carregarMotosBanco(), carregarContatosBanco()]);
+            await Promise.all([carregarServicosBanco(), carregarMotosBanco(), carregarContatosBanco(), carregarEstoqueBanco()]);
             setupFiltroServico();
             injetarNomeOrg();
+            const autoEdit = new URLSearchParams(location.search).get('autoEdit');
+            if (autoEdit) abrirModalEditarServico(parseInt(autoEdit));
         });
+
+        // ================= LOGS WHATSAPP =================
+
+        async function carregarLogsWhatsapp() {
+            const listaLogs = document.getElementById('lista-logs-wa');
+            if (!listaLogs) return;
+            const usuarioSalvo = localStorage.getItem('usuarioLogado');
+            if (!usuarioSalvo) return;
+            const { usuario } = JSON.parse(usuarioSalvo);
+            try {
+                const resp = await fetchAutenticado(`${API_URL}/whatsapp/logs?idOrganizacao=${usuario.idOrganizacao}`);
+                if (!resp || !resp.ok) return;
+                const logs = await resp.json();
+                listaLogs.innerHTML = '';
+                if (logs.length === 0) {
+                    listaLogs.innerHTML = `<tr><td colspan="5" class="empty-row">Nenhum envio registrado ainda.</td></tr>`;
+                    return;
+                }
+                logs.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'item-card';
+                    const data = new Date(log.createdat).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                    const statusHtml = log.status === 'enviado'
+                        ? `<span class="log-status-enviado">✅ Enviado</span>`
+                        : log.status === 'pendente'
+                        ? `<span class="log-status-pendente">⏳ Na fila...</span>`
+                        : `<span class="log-status-erro">❌ Erro</span>`;
+                    tr.innerHTML = `
+                        <td>${data}</td>
+                        <td>${log.nomecontato || log.jid}</td>
+                        <td>${log.idservico || '-'}</td>
+                        <td>${statusHtml}</td>
+                        <td class="log-erro-detalhe">${log.erro || '-'}</td>`;
+                    listaLogs.appendChild(tr);
+                });
+                // Auto-refresh enquanto houver mensagens pendentes
+                if (logs.some(l => l.status === 'pendente')) {
+                    setTimeout(carregarLogsWhatsapp, 10000);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function carregarServicosRelatorio() {
+            const tbody = document.getElementById('lista-servicos-rel');
+            if (!tbody) return;
+            const usuarioSalvo = localStorage.getItem('usuarioLogado');
+            if (!usuarioSalvo) return;
+            const { usuario } = JSON.parse(usuarioSalvo);
+            try {
+                const resp = await fetchAutenticado(`${API_URL}/servicos/${usuario.idOrganizacao}`);
+                if (!resp || !resp.ok) return;
+                const lista = await resp.json();
+                const prontos = lista.filter(s => s.statusservico === 'pronto');
+                tbody.innerHTML = '';
+                if (prontos.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="empty-row">Nenhum serviço concluído ainda.</td></tr>`;
+                    return;
+                }
+                prontos.forEach(s => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'item-card';
+                    const data = s.dataentrada ? new Date(s.dataentrada).toLocaleDateString('pt-BR') : '-';
+                    const valor = s.valorservico ? `R$ ${parseFloat(s.valorservico).toFixed(2)}` : '-';
+                    const motos = s.motos && s.motos.length > 0 ? s.motos.map(m => m.nomemoto).join(', ') : '-';
+                    tr.innerHTML = `<td>${data}</td><td>${s.nomeservico}</td><td>${motos}</td><td style="font-weight:600">${valor}</td>`;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) { console.error(e); }
+        }

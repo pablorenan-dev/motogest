@@ -48,39 +48,47 @@
 
     <!-- Modal: Adicionar Serviço -->
     <div id="modal-add-servico" class="modal-overlay" onclick="fecharModalFora(event, 'modal-add-servico')">
-        <div class="modal-content">
+        <div class="modal-content modal-wide">
             <h3>Adicionar Serviço</h3>
-            <input type="text" id="add-nome" placeholder="Nome do serviço">
-            <input type="text" id="add-desc" placeholder="Descrição (opcional)">
-            
-            <div class="modal-row">
-                <div class="qty-field">
-                    <label class="qty-label">Status</label>
-                    <select id="add-status" class="modal-select">
-                        <option value="aguardando">Aguardando</option>
-                        <option value="em_andamento">Em andamento</option>
-                        <option value="impedimento">Impedimento</option>
-                        <option value="pronto">Pronto</option>
-                    </select>
+            <div class="modal-two-col">
+                <div class="modal-col">
+                    <input type="text" id="add-nome" placeholder="Nome do serviço">
+                    <div class="modal-row">
+                        <div class="qty-field">
+                            <label class="qty-label">Status</label>
+                            <select id="add-status" class="modal-select">
+                                <option value="aguardando">Aguardando</option>
+                                <option value="em_andamento">Em andamento</option>
+                                <option value="impedimento">Impedimento</option>
+                                <option value="pronto">Pronto</option>
+                            </select>
+                        </div>
+                        <div class="qty-field">
+                            <label class="qty-label">Prioridade</label>
+                            <select id="add-prioridade" class="modal-select">
+                                <option value="baixo">Baixo</option>
+                                <option value="normal" selected>Normal</option>
+                                <option value="medio">Médio</option>
+                                <option value="alto">Alto</option>
+                                <option value="urgente">Urgente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <input type="text" id="add-valor" placeholder="Valor do serviço (R$)" inputmode="decimal">
+                    <div class="vincular-label">Vincular motos</div>
+                    <div class="chip-selector" id="add-servico-motos"></div>
+                    <div class="vincular-label">Vincular contatos</div>
+                    <div class="chip-selector" id="add-servico-contatos"></div>
+                    <div class="vincular-label">Vincular produtos</div>
+                    <div class="chip-selector" id="add-servico-produtos"></div>
                 </div>
-                <div class="qty-field">
-                    <label class="qty-label">Prioridade</label>
-                    <select id="add-prioridade" class="modal-select">
-                        <option value="baixo">Baixo</option>
-                        <option value="normal">Normal</option>
-                        <option value="medio">Médio</option>
-                        <option value="alto">Alto</option>
-                        <option value="urgente">Urgente</option>
-                    </select>
+                <div class="modal-col">
+                    <label class="qty-label">Descrição</label>
+                    <textarea id="add-desc" class="desc-textarea" placeholder="Descreva o serviço a ser realizado..."></textarea>
+                    <label class="qty-label">Observações</label>
+                    <textarea id="add-obs" class="obs-textarea" placeholder="Observações internas..."></textarea>
                 </div>
             </div>
-
-            <div class="vincular-label">Vincular motos</div>
-            <div class="chip-selector" id="add-servico-motos"></div>
-
-            <div class="vincular-label">Vincular contatos</div>
-            <div class="chip-selector" id="add-servico-contatos"></div>
-
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="fecharModal('modal-add-servico')">Cancelar</button>
                 <button class="btn-confirm" onclick="adicionarServico()">Adicionar</button>
@@ -90,42 +98,75 @@
 
     <!-- Modal: Editar Serviço -->
     <div id="modal-edit-servico" class="modal-overlay" onclick="fecharModalFora(event, 'modal-edit-servico')">
-        <div class="modal-content">
+        <div class="modal-content modal-wide">
             <h3>Editar Serviço</h3>
-            <input type="text" id="edit-nome" placeholder="Nome do serviço">
-            <input type="text" id="edit-desc" placeholder="Descrição (opcional)">
-            
-            <div class="modal-row">
-                <div class="qty-field">
-                    <label class="qty-label">Status</label>
-                    <select id="edit-status" class="modal-select">
-                        <option value="aguardando">Aguardando</option>
-                        <option value="em_andamento">Em andamento</option>
-                        <option value="impedimento">Impedimento</option>
-                        <option value="pronto">Pronto</option>
-                    </select>
+            <div class="modal-two-col">
+                <div class="modal-col">
+                    <input type="text" id="edit-nome" placeholder="Nome do serviço">
+                    <div class="modal-row">
+                        <div class="qty-field">
+                            <label class="qty-label">Status</label>
+                            <select id="edit-status" class="modal-select">
+                                <option value="aguardando">Aguardando</option>
+                                <option value="em_andamento">Em andamento</option>
+                                <option value="impedimento">Impedimento</option>
+                                <option value="pronto">Pronto</option>
+                            </select>
+                        </div>
+                        <div class="qty-field">
+                            <label class="qty-label">Prioridade</label>
+                            <select id="edit-prioridade" class="modal-select">
+                                <option value="baixo">Baixo</option>
+                                <option value="normal">Normal</option>
+                                <option value="medio">Médio</option>
+                                <option value="alto">Alto</option>
+                                <option value="urgente">Urgente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <input type="text" id="edit-valor" placeholder="Valor do serviço (R$)" inputmode="decimal">
+                    <div class="vincular-label">Motos vinculadas</div>
+                    <div class="chip-selector" id="edit-servico-motos"></div>
+                    <div class="vincular-label">Contatos vinculados</div>
+                    <div class="chip-selector" id="edit-servico-contatos"></div>
+                    <div class="vincular-label">Produtos vinculados</div>
+                    <div class="chip-selector" id="edit-servico-produtos"></div>
                 </div>
-                <div class="qty-field">
-                    <label class="qty-label">Prioridade</label>
-                    <select id="edit-prioridade" class="modal-select">
-                        <option value="baixo">Baixo</option>
-                        <option value="normal">Normal</option>
-                        <option value="medio">Médio</option>
-                        <option value="alto">Alto</option>
-                        <option value="urgente">Urgente</option>
-                    </select>
+                <div class="modal-col">
+                    <label class="qty-label">Descrição</label>
+                    <textarea id="edit-desc" class="desc-textarea" placeholder="Descreva o serviço a ser realizado..."></textarea>
+                    <label class="qty-label">Observações</label>
+                    <textarea id="edit-obs" class="obs-textarea" placeholder="Observações internas..."></textarea>
                 </div>
             </div>
-
-            <div class="vincular-label">Motos vinculadas</div>
-            <div class="chip-selector" id="edit-servico-motos"></div>
-
-            <div class="vincular-label">Contatos vinculados</div>
-            <div class="chip-selector" id="edit-servico-contatos"></div>
-
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="fecharModal('modal-edit-servico')">Cancelar</button>
                 <button class="btn-confirm" onclick="salvarEdicaoServico()">Salvar Edição</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Terminar Serviço -->
+    <div id="modal-terminar" class="modal-overlay" onclick="fecharModalFora(event, 'modal-terminar')">
+        <div class="modal-content terminar-modal">
+            <h3>Notificar contatos</h3>
+
+            <label class="qty-label">Mensagem</label>
+            <textarea id="terminar-mensagem" class="desc-textarea" style="min-height: 110px;"></textarea>
+
+            <label class="qty-label">Contatos para notificar</label>
+            <div id="terminar-contatos-lista" class="terminar-contatos-lista"></div>
+
+            <div class="terminar-info">⏱ Será enviada 1 mensagem por minuto</div>
+
+            <div id="terminar-progresso" class="terminar-progresso" style="display:none">
+                <div id="terminar-status" class="terminar-status-text"></div>
+                <div class="terminar-bar-wrap"><div id="terminar-bar" class="terminar-bar"></div></div>
+            </div>
+
+            <div id="terminar-actions" class="modal-actions">
+                <button class="btn-cancel" onclick="fecharModal('modal-terminar')">Cancelar</button>
+                <button class="btn-confirm" onclick="enviarMensagensTermino()">Terminar e notificar</button>
             </div>
         </div>
     </div>

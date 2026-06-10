@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Serviço - Motogest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">M</div>
+            <span class="logo-text">Motogest</span>
+        </div>
+        <a href="home.html" class="nav-item">Home</a>
+        <a href="estoque.html" class="nav-item">Estoque</a>
+        <a href="moto.html" class="nav-item">Motos</a>
+        <a href="contato.html" class="nav-item">Contatos</a>
+        <a href="servicos.html" class="nav-item active">Serviços</a>
+        <a href="vendas.html" class="nav-item">Vendas</a>
+        <a href="relatorios.html" class="nav-item">Relatórios</a>
+        <a href="chats.html" class="nav-item">Chats</a>
+        <a href="configuracoes.html" class="nav-item">Configurações</a>
+    </aside>
+
+    <main class="main-content">
+        <div class="sd-topbar">
+            <a href="servicos.html" class="sd-back">← Serviços</a>
+            <div class="sd-actions" id="sd-actions" style="display:none">
+                <button class="btn-cancel" onclick="irParaEditar()">Editar</button>
+                <button class="btn-reject" onclick="abrirConfirmarExcluir()">Excluir</button>
+            </div>
+        </div>
+
+        <div id="sd-loading" class="sd-loading">Carregando serviço...</div>
+
+        <div id="sd-conteudo" style="display:none">
+            <div class="sd-card">
+                <div class="sd-titulo-row">
+                    <h1 id="sd-nome"></h1>
+                    <span id="sd-status-badge" class="status-badge"></span>
+                    <span id="sd-prioridade-badge" class="prioridade-badge"></span>
+                </div>
+
+                <div class="sd-meta-grid">
+                    <div class="sd-meta-item">
+                        <span class="sd-meta-label">Data de entrada</span>
+                        <span id="sd-entrada" class="sd-meta-value"></span>
+                    </div>
+                    <div class="sd-meta-item">
+                        <span class="sd-meta-label">Previsão de conclusão</span>
+                        <span id="sd-conclusao" class="sd-meta-value"></span>
+                    </div>
+                    <div class="sd-meta-item">
+                        <span class="sd-meta-label">Valor</span>
+                        <span id="sd-valor" class="sd-meta-value"></span>
+                    </div>
+                </div>
+
+                <div class="sd-body-grid">
+                    <div>
+                        <div class="sd-section-title">Descrição</div>
+                        <div id="sd-desc" class="sd-text"></div>
+                    </div>
+                    <div>
+                        <div class="sd-section-title">Observações</div>
+                        <div id="sd-obs" class="sd-text"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="sd-section-title">Motos</div>
+                    <div id="sd-motos" class="sd-chips"></div>
+                </div>
+
+                <div>
+                    <div class="sd-section-title">Contatos</div>
+                    <div id="sd-contatos" class="sd-chips"></div>
+                </div>
+
+                <div>
+                    <div class="sd-section-title">Produtos</div>
+                    <div id="sd-produtos" class="sd-chips"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal confirmar exclusão -->
+    <div id="modal-excluir" class="modal-overlay" onclick="fecharModalFora(event, 'modal-excluir')">
+        <div class="modal-content modal-confirm">
+            <h3>Deseja excluir este serviço?</h3>
+            <div class="modal-actions">
+                <button class="btn-confirm" onclick="excluirServico()">Sim, excluir</button>
+                <button class="btn-reject" onclick="fecharModalExcluir()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001/api';
+        const params = new URLSearchParams(location.search);
+        const idServico = params.get('id');
+
+        async function fetchAuth(url, opts = {}) {
+            const salvo = localStorage.getItem('usuarioLogado');
+            if (!salvo) { window.location.href = 'index.html'; return null; }
+            const { token } = JSON.parse(salvo);
+            return fetch(url, {
+                ...opts,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...(opts.headers || {})
+                }
+            });
+        }
+
+        function fecharModalExcluir() {
+            document.getElementById('modal-excluir').style.display = 'none';
+        }
+        function fecharModalFora(e, id) {
+            if (e.target.id === id) fecharModalExcluir();
+        }
+        function abrirConfirmarExcluir() {
+            document.getElementById('modal-excluir').style.display = 'flex';
+        }
+        function irParaEditar() {
+            window.location.href = `servicos.html?autoEdit=${idServico}`;
+        }
+
+        async function excluirServico() {
+            const resp = await fetchAuth(`${API_URL}/servicos/${idServico}`, { method: 'DELETE' });
+            if (resp && resp.ok) {
+                window.location.href = 'servicos.html';
+            } else {
+                alert('Erro ao excluir o serviço.');
+            }
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '-';
+            return new Date(dataStr).toLocaleDateString('pt-BR');
+        }
+
+        function traduzirStatus(s) {
+            const m = { aguardando: 'Aguardando', em_andamento: 'Em andamento', impedimento: 'Impedimento', pronto: 'Pronto' };
+            return m[s] || s;
+        }
+
+        function traduzirPrioridade(p) {
+            const m = { baixo: 'Baixo', normal: 'Normal', medio: 'Médio', alto: 'Alto', urgente: 'Urgente' };
+            return m[p] || p;
+        }
+
+        async function carregarServico() {
+            if (!idServico) {
+                document.getElementById('sd-loading').textContent = 'Serviço não encontrado.';
+                return;
+            }
+
+            const resp = await fetchAuth(`${API_URL}/servicos/detalhe/${idServico}`);
+            if (!resp) return;
+
+            if (!resp.ok) {
+                document.getElementById('sd-loading').textContent = 'Erro ao carregar serviço.';
+                return;
+            }
+
+            const s = await resp.json();
+
+            document.title = `${s.nomeservico} - Motogest`;
+            document.getElementById('sd-nome').textContent = s.nomeservico;
+
+            const statusBadge = document.getElementById('sd-status-badge');
+            statusBadge.textContent = traduzirStatus(s.statusservico);
+            statusBadge.className = `status-badge status-${s.statusservico}`;
+
+            const priorBadge = document.getElementById('sd-prioridade-badge');
+            priorBadge.textContent = traduzirPrioridade(s.prioridade);
+            priorBadge.className = `prioridade-badge prioridade-${s.prioridade}`;
+
+            document.getElementById('sd-entrada').textContent = formatarData(s.dataentrada);
+            document.getElementById('sd-conclusao').textContent = formatarData(s.dataconclusao);
+            document.getElementById('sd-valor').textContent = s.valorservico
+                ? `R$ ${parseFloat(s.valorservico).toFixed(2).replace('.', ',')}`
+                : '-';
+
+            const descEl = document.getElementById('sd-desc');
+            descEl.textContent = s.descricaoservico || '';
+            if (!s.descricaoservico) descEl.innerHTML = '<span class="sd-empty-text">Sem descrição</span>';
+
+            const obsEl = document.getElementById('sd-obs');
+            obsEl.textContent = s.observacoes || '';
+            if (!s.observacoes) obsEl.innerHTML = '<span class="sd-empty-text">Sem observações</span>';
+
+            const motosEl = document.getElementById('sd-motos');
+            if (s.motos && s.motos.length > 0) {
+                motosEl.innerHTML = s.motos.map(m => `<span class="sd-chip">${m.nomemoto}</span>`).join('');
+            } else {
+                motosEl.innerHTML = '<span class="sd-sem-vinculo">Nenhuma moto vinculada</span>';
+            }
+
+            const contatosEl = document.getElementById('sd-contatos');
+            if (s.contatos && s.contatos.length > 0) {
+                contatosEl.innerHTML = s.contatos.map(c => `<span class="sd-chip-contact">${c.nomecontato}</span>`).join('');
+            } else {
+                contatosEl.innerHTML = '<span class="sd-sem-vinculo">Nenhum contato vinculado</span>';
+            }
+
+            const produtosEl = document.getElementById('sd-produtos');
+            if (s.produtos && s.produtos.length > 0) {
+                produtosEl.innerHTML = s.produtos.map(p =>
+                    `<span class="sd-chip" style="background:#fef3c7;color:#92400e;border-color:#fde68a">${p.nomeproduto} <small>(${p.quantidade}x)</small></span>`
+                ).join('');
+            } else {
+                produtosEl.innerHTML = '<span class="sd-sem-vinculo">Nenhum produto vinculado</span>';
+            }
+
+            document.getElementById('sd-loading').style.display = 'none';
+            document.getElementById('sd-conteudo').style.display = 'block';
+            document.getElementById('sd-actions').style.display = 'flex';
+        }
+
+        document.addEventListener('DOMContentLoaded', carregarServico);
+    </script>
+</body>
+</html>
