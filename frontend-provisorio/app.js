@@ -71,7 +71,7 @@ async function validarLogin(event) {
 // ================= SEARCH PICKER =================
 // Seletor com busca em tempo real, substitui os chips para escalar bem
 
-function renderizarSearchPicker(containerId, items, idKey, nomeKey, selectedIds = []) {
+function renderizarSearchPicker(containerId, items, idKey, nomeKey, selectedIds = [], onChange = null) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -113,6 +113,7 @@ function renderizarSearchPicker(containerId, items, idKey, nomeKey, selectedIds 
         item.classList.toggle('active');
         item.querySelector('.picker-checkbox').textContent = item.classList.contains('active') ? '✓' : '';
         countEl.textContent = list.querySelectorAll('.picker-item.active').length;
+        if (onChange) onChange(getSelectedFromPicker(containerId));
     });
 }
 
@@ -1039,10 +1040,44 @@ let servicos = [];
         }
 
         function prepararAddServicoModal() {
-            renderizarSearchPicker('add-servico-motos', motos, 'idmoto', 'nomemoto');
-            renderizarSearchPicker('add-servico-contatos', contatos, 'idcontato', 'nomecontato');
-            renderizarSearchPicker('add-servico-produtos', pecas, 'idproduto', 'nomeproduto');
+            _iniciarPickersServico('add');
             abrirModal('modal-add-servico');
+        }
+
+        function _iniciarPickersServico(prefixo, motosSel = [], contatosSel = [], produtosSel = []) {
+            const onMotosChange = (idsMotosSel) => {
+                const jaSelContatos = getSelectedFromPicker(`${prefixo}-servico-contatos`);
+                // Mostra contatos da(s) moto(s) selecionada(s) + os que já estavam selecionados
+                const filtrados = idsMotosSel.length === 0
+                    ? contatos
+                    : contatos.filter(c =>
+                        jaSelContatos.includes(String(c.idcontato)) ||
+                        (c.motos || []).some(m => idsMotosSel.includes(String(m.idmoto)))
+                    );
+                renderizarSearchPicker(`${prefixo}-servico-contatos`, filtrados, 'idcontato', 'nomecontato', jaSelContatos, onContatosChange);
+            };
+
+            const onContatosChange = (idsContatosSel) => {
+                const jaSelMotos = getSelectedFromPicker(`${prefixo}-servico-motos`);
+                // Mostra motos do(s) contato(s) selecionado(s) + as que já estavam selecionadas
+                // Deriva de contatos[].motos já que o endpoint de motos não traz contatos
+                const idsMotosDosContatos = new Set(
+                    contatos
+                        .filter(c => idsContatosSel.includes(String(c.idcontato)))
+                        .flatMap(c => (c.motos || []).map(m => String(m.idmoto)))
+                );
+                const filtradas = idsContatosSel.length === 0
+                    ? motos
+                    : motos.filter(m =>
+                        jaSelMotos.includes(String(m.idmoto)) ||
+                        idsMotosDosContatos.has(String(m.idmoto))
+                    );
+                renderizarSearchPicker(`${prefixo}-servico-motos`, filtradas, 'idmoto', 'nomemoto', jaSelMotos, onMotosChange);
+            };
+
+            renderizarSearchPicker(`${prefixo}-servico-motos`, motos, 'idmoto', 'nomemoto', motosSel, onMotosChange);
+            renderizarSearchPicker(`${prefixo}-servico-contatos`, contatos, 'idcontato', 'nomecontato', contatosSel, onContatosChange);
+            renderizarSearchPicker(`${prefixo}-servico-produtos`, pecas, 'idproduto', 'nomeproduto', produtosSel);
         }
 
         async function adicionarServico() {
@@ -1113,9 +1148,7 @@ let servicos = [];
             const contatosSelecionados = servico.contatos ? servico.contatos.map(c => String(c.idcontato)) : [];
             const produtosSelecionados = servico.produtos ? servico.produtos.map(p => String(p.idproduto)) : [];
 
-            renderizarSearchPicker('edit-servico-motos', motos, 'idmoto', 'nomemoto', motosSelecionadas);
-            renderizarSearchPicker('edit-servico-contatos', contatos, 'idcontato', 'nomecontato', contatosSelecionados);
-            renderizarSearchPicker('edit-servico-produtos', pecas, 'idproduto', 'nomeproduto', produtosSelecionados);
+            _iniciarPickersServico('edit', motosSelecionadas, contatosSelecionados, produtosSelecionados);
 
             abrirModal('modal-edit-servico');
         }
