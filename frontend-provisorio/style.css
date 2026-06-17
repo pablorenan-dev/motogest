@@ -909,7 +909,7 @@ body {
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
 .modal-actions button { padding: 10px 20px; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 14px; }
 
-.btn-confirm { background-color: #2d9e6b; color: #fff; }
+.btn-confirm { background-color: #2d9e6b; color: #fff; padding: 10px 20px; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 14px; }
 .btn-confirm:hover { background-color: #248a5a; }
 .btn-cancel  { background-color: #f3f4f6; color: #374151; }
 .btn-cancel:hover  { background-color: #e5e7eb; }
