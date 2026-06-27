@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'https://motogest-hnz8.onrender.com';
 
 // Redireciona para login se não houver token (exceto na própria tela de login)
 (function() {
@@ -123,8 +123,7 @@ function getSelectedFromPicker(containerId) {
     return Array.from(container.querySelectorAll('.picker-item.active')).map(el => el.dataset.id);
 }
 
-// ================= ESTOQUE =================
-
+// ================= ESTOQUE ================c
 let pecas = [];
 let pecaAtualId = null;
 
