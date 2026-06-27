@@ -1,4 +1,4 @@
-const API_URL = 'https://motogest-hnz8.onrender.com';
+const API_URL = 'https://motogest-hnz8.onrender.com/api';
 
 // Redireciona para login se não houver token (exceto na própria tela de login)
 (function() {
