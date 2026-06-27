@@ -1,5 +1,7 @@
 const API_URL = 'https://motogest-hnz8.onrender.com/api';
 
+//tenho probleminha hihi
+
 // Redireciona para login se não houver token (exceto na própria tela de login)
 (function() {
     const page = window.location.pathname.split('/').pop() || 'index.html';
