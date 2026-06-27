@@ -25,15 +25,16 @@
                 <button type="submit" id="reg-btn">Criar conta</button>
             </form>
 
-            <p class="login-link">Já tem conta? <a href="login.html">Entrar</a></p>
+            <p class="login-link" id="login-link">Já tem conta? <a href="login.html">Entrar</a></p>
         </div>
     </section>
 
     <script>
-    const API = 'http://localhost:3001/api';
+    const API = 'https://motogest-hnz8.onrender.com/api';
 
-    // Se já está logado, vai direto pro home
-    if (localStorage.getItem('token')) window.location.replace('home.html');
+    if (localStorage.getItem('token')) {
+        document.getElementById('login-link').innerHTML = 'Já tem conta? <a href="home.html">Voltar ao painel</a>';
+    }
 
     async function registrar(event) {
         event.preventDefault();
